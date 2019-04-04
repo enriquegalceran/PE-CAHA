@@ -239,9 +239,6 @@ def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbos
         juntar_imagenes(noche, secciones_unicas, coordenadas_secciones, secciones_count, indice_seccion, dir_bias,
                         dir_datos, lista_bias, verbose=verbose)
 
-# if 'BiasSecciones.csv' in os.listdir('.'):
-#     os.remove('BiasSecciones.csv')
-
 
 def main():
     # ------------Valores por defecto-------------------------------------------
