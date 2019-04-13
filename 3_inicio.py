@@ -160,8 +160,32 @@ def usoccd():
     plt.show()
 
 
+def slicing_data(slicing_push, size_da, size_mb):
+    if slicing_push == "NW":
+        s1 = size_da[0] - size_mb[0]
+        s2 = size_da[0]
+        s3 = 0
+        s4 = size_mb[1]
+    elif slicing_push == "SE":
+        s1 = 0
+        s2 = size_mb[0]
+        s3 = size_da[1] - size_mb[1]
+        s4 = size_da[1]
+    elif slicing_push == "NE":
+        s1 = size_da[0] - size_mb[0]
+        s2 = size_da[0]
+        s3 = 0
+        s4 = size_mb[1]
+    else:
+        s1 = 0
+        s2 = size_mb[0]
+        s3 = 0
+        s4 = size_mb[1]
+    return s1, s2, s3, s4
+
+
 def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_count_, indice_seccion_,
-                    bin_secciones_, dir_bias_, dir_datos_, lista_bias_, verbose=0, interactive=False):
+                    bin_secciones_, dir_bias_, dir_datos_, lista_bias_, verbose=0, interactive=False, recortar=False):
     for seccion in range(len(secciones_unicas_)):
         print('seccion: ' + str(seccion))
         coordenadas_dibujo = sacar_coordenadas_2(coordenadas_secciones_, seccion)
@@ -171,8 +195,8 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
         crpix1 = bin_secciones_[seccion, 1]
         crpix2 = bin_secciones_[seccion, 0]
 
-        mostrarresultados(['Crpix2', 'Crpix1', 'A', 'B'],
-                          [crpix2, crpix1,
+        mostrarresultados(['N', 'Crpix2', 'Crpix1', 'A', 'B'],
+                          [len(indice_seccion_[indice_seccion_ == seccion]), crpix2, crpix1,
                            int((coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) / crpix1),
                            int((coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) / crpix2)])
 
@@ -181,12 +205,33 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
                                   int((coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) / crpix2)))
 
         indice0 = 0
-
+        slicing_push = False
         for imagen in range(len(lista_bias_)):
             if indice_seccion_[imagen] == seccion:
                 image_file = dir_datos_ + noche + '/' + lista_bias_[imagen]
                 image_data = fits.getdata(image_file, ext=0)
-                master_biases[indice0, :, :] = image_data[:, :]
+                if image_data[:, :].shape == master_biases[indice0, :, :].shape:
+                    master_biases[indice0, :, :] = image_data[:, :]                     # Juntar
+                else:
+                    size_mb = master_biases[indice0, :, :].shape
+                    size_da = image_data[:, :].shape
+                    if recortar:
+                        if not slicing_push:
+                            print("Sizes incompatible:")
+                            print("Data size: " + str(size_da))
+                            print("Master Bias size: " + str(size_mb) + "\n")
+                            slicing_push = (input("Slicing fits. "
+                                                  "Select side towards to push (SW), SE, NE, NW: ") or "SW")
+                        s1, s2, s3, s4 = slicing_data(slicing_push, size_da, size_mb)
+                        master_biases[indice0, :, :] = image_data[s1:s2, s3:s4]
+                    else:
+                        print("Sizes incompatible:")
+                        print("Data size: " + str(size_da))
+                        print("Master Bias size: " + str(size_mb) + "\n")
+                        print("Skipping current Master Bias.")
+                        print("Consider using slicing with '--recortar'. ")
+                        input("Press Enter to continue")
+                        break
                 indice0 += 1
 
         master_bias_colapsado = np.median(master_biases, axis=0)
@@ -211,7 +256,7 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
             input("Press Enter to continue...")
 
 
-def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbose, interactive=False):
+def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbose, interactive, recortar):
     i_noche = 0
     for noche in lista_noches:
         i_noche += 1
@@ -256,7 +301,7 @@ def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbos
         #     add_to_file('BiasSecciones.csv', secciones_unicas[k] + ';' + str(secciones_count[k]) + '\n')
 
         juntar_imagenes(noche, secciones_unicas, coordenadas_secciones, secciones_count, indice_seccion, bin_secciones,
-                        dir_bias, dir_datos, lista_bias, verbose=verbose, interactive=interactive)
+                        dir_bias, dir_datos, lista_bias, verbose=verbose, interactive=interactive, recortar=recortar)
 
 
 def main():
@@ -278,6 +323,7 @@ def main():
     parser.add_argument("-dl", "--dir_listas", default=default_dir_listas, type=str, help='Lists Directory')
     parser.add_argument('--cmap', type=str, help="Colormap", default='hot')
     parser.add_argument("-i", "--interactive", action="store_true")
+    parser.add_argument("--recortar", action="store_true")
     args = parser.parse_args()
 
     lista_noches = os.listdir(args.dir_datos)
@@ -285,7 +331,8 @@ def main():
     tiempo_inicio_listas = time.time()
     crear_listas_cal_y_sci(lista_noches, args.dir_listas, args.dir_datos, desc_bias, desc_flats, desc_misc)
     tiempo_medio = time.time()
-    realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias, args.verbose, args.interactive)
+    realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
+                           args.verbose, args.interactive, args.recortar)
     tiempo_final = time.time()
 
     mostrarresultados(['Tiempo listas', 'Tiempo master bias'],
