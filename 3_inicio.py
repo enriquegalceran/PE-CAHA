@@ -9,6 +9,7 @@ import csv
 from numpy import genfromtxt
 import argparse
 import time
+import warnings
 
 
 def deshacer_tupla_coord(tupla):
@@ -217,6 +218,7 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
                     size_da = image_data[:, :].shape
                     if recortar:
                         if not slicing_push:
+                            warnings.warn("Sizes Incompatible!")
                             print("Sizes incompatible:")
                             print("Data size: " + str(size_da))
                             print("Master Bias size: " + str(size_mb) + "\n")
@@ -225,6 +227,7 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
                         s1, s2, s3, s4 = slicing_data(slicing_push, size_da, size_mb)
                         master_biases[indice0, :, :] = image_data[s1:s2, s3:s4]
                     else:
+                        warnings.warn("Sizes Incompatible!")
                         print("Sizes incompatible:")
                         print("Data size: " + str(size_da))
                         print("Master Bias size: " + str(size_mb) + "\n")
@@ -327,16 +330,18 @@ def main():
     args = parser.parse_args()
 
     lista_noches = os.listdir(args.dir_datos)
-
     tiempo_inicio_listas = time.time()
+
     crear_listas_cal_y_sci(lista_noches, args.dir_listas, args.dir_datos, desc_bias, desc_flats, desc_misc)
     tiempo_medio = time.time()
+
     realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
                            args.verbose, args.interactive, args.recortar)
     tiempo_final = time.time()
 
-    mostrarresultados(['Tiempo listas', 'Tiempo master bias'],
-                      [round(tiempo_medio-tiempo_inicio_listas, 2), round(tiempo_final - tiempo_medio, 2)],
+    mostrarresultados(['Tiempo Listas', 'Tiempo Master Bias', 'Cuantos Biases'],
+                      [round(tiempo_medio-tiempo_inicio_listas, 2), round(tiempo_final - tiempo_medio, 2),
+                       len(os.listdir(args.dir_bias))],
                       titulo='Tiempo Ejecucion')
 
 
