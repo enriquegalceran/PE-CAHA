@@ -161,24 +161,36 @@ def usoccd():
 
 
 def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_count_, indice_seccion_,
-                    dir_bias_, dir_datos_, lista_bias_, verbose=0):
+                    bin_secciones_, dir_bias_, dir_datos_, lista_bias_, verbose=0, interactive=False):
     for seccion in range(len(secciones_unicas_)):
         print('seccion: ' + str(seccion))
         coordenadas_dibujo = sacar_coordenadas_2(coordenadas_secciones_, seccion)
         x1, x2, y1, y2 = deshacer_tupla_coord(coordenadas_dibujo)
+
+        # Sacar el Binning
+        crpix1 = bin_secciones_[seccion, 1]
+        crpix2 = bin_secciones_[seccion, 0]
+
+        mostrarresultados(['Crpix2', 'Crpix1', 'A', 'B'],
+                          [crpix2, crpix1,
+                           int((coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) / crpix1),
+                           int((coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) / crpix2)])
+
         master_biases = np.zeros((secciones_count_[seccion],
-                                 coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1,
-                                 coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1))
+                                  int((coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) / crpix1),
+                                  int((coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) / crpix2)))
+
         indice0 = 0
+
         for imagen in range(len(lista_bias_)):
             if indice_seccion_[imagen] == seccion:
                 image_file = dir_datos_ + noche + '/' + lista_bias_[imagen]
                 image_data = fits.getdata(image_file, ext=0)
                 master_biases[indice0, :, :] = image_data[:, :]
                 indice0 += 1
-                
+
         master_bias_colapsado = np.median(master_biases, axis=0)
-        nombre_archivo = noche + '-' + str(x1) + '_' + str(x2) + '_' + str(y1) + '_' + str(y2) + '.fits'
+        nombre_archivo = noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}.fits".format(x1, x2, y1, y2)
         masterbias_final = fits.PrimaryHDU(master_bias_colapsado)
         masterbias_header = fits.open(dir_datos_ + noche + '/' + lista_bias_[0])[0].header
 
@@ -195,8 +207,11 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
             coord_lim = ImP.limites_imagen(*coordenadas_dibujo)
             ImP.imgdibujar(master_bias_colapsado, *coordenadas_dibujo, *coord_lim, verbose_=1)
 
+        if interactive:
+            input("Press Enter to continue...")
 
-def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbose):
+
+def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbose, interactive=False):
     i_noche = 0
     for noche in lista_noches:
         i_noche += 1
@@ -222,11 +237,15 @@ def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbos
         # print('secciones_count')
         # print(secciones_count)
         # print('%%%%%%%%%%%%%%%%')
+
+        bin_secciones = -1 * np.ones((len(secciones_unicas), 2), dtype=int)
         indice_seccion = np.zeros(len(lista_bias), dtype=int)
         for i in range(len(lista_bias)):
             for j in range(len(secciones_unicas)):
                 if secciones[i] == secciones_unicas[j]:
                     indice_seccion[i] = j
+                    bin_secciones[j, 0] = int(fits.open(dir_datos + noche + '/' + lista_bias[i])[0].header['crpix2'])
+                    bin_secciones[j, 1] = int(fits.open(dir_datos + noche + '/' + lista_bias[i])[0].header['crpix1'])
 
         coordenadas_secciones = np.zeros((len(secciones_unicas), 4), dtype=int)
         for i in range(len(secciones_unicas)):
@@ -236,12 +255,12 @@ def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbos
         # for k in range(len(secciones_unicas)):
         #     add_to_file('BiasSecciones.csv', secciones_unicas[k] + ';' + str(secciones_count[k]) + '\n')
 
-        juntar_imagenes(noche, secciones_unicas, coordenadas_secciones, secciones_count, indice_seccion, dir_bias,
-                        dir_datos, lista_bias, verbose=verbose)
+        juntar_imagenes(noche, secciones_unicas, coordenadas_secciones, secciones_count, indice_seccion, bin_secciones,
+                        dir_bias, dir_datos, lista_bias, verbose=verbose, interactive=interactive)
 
 
 def main():
-    # ------------Valores por defecto-------------------------------------------
+    # ---------------Valores por defecto-------------------------------------------
     default_dir_datos = 'CAFOS2017/'
     default_dir_bias = 'Biases/'
     default_dir_listas = 'Listas/'
@@ -258,6 +277,7 @@ def main():
     parser.add_argument("-dd", "--dir_datos", default=default_dir_datos, type=str, help='Data Directory')
     parser.add_argument("-dl", "--dir_listas", default=default_dir_listas, type=str, help='Lists Directory')
     parser.add_argument('--cmap', type=str, help="Colormap", default='hot')
+    parser.add_argument("-i", "--interactive", action="store_true")
     args = parser.parse_args()
 
     lista_noches = os.listdir(args.dir_datos)
@@ -265,7 +285,7 @@ def main():
     tiempo_inicio_listas = time.time()
     crear_listas_cal_y_sci(lista_noches, args.dir_listas, args.dir_datos, desc_bias, desc_flats, desc_misc)
     tiempo_medio = time.time()
-    realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias, args.verbose)
+    realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias, args.verbose, args.interactive)
     tiempo_final = time.time()
 
     mostrarresultados(['Tiempo listas', 'Tiempo master bias'],
@@ -371,3 +391,11 @@ if __name__ == "__main__":
 # '--parametro1 valor1 \
 # '--parametro2 valor2 \
 # chmod +x nombre_script.sh
+
+# https://pyformat.info
+# "str{0:04d}".format(210)
+
+
+
+
+
