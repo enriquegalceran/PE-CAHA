@@ -196,15 +196,21 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
         crpix1 = bin_secciones_[seccion, 1]
         crpix2 = bin_secciones_[seccion, 0]
 
-        mostrarresultados(['N', 'Crpix2', 'Crpix1', 'A', 'B'],
-                          [len(indice_seccion_[indice_seccion_ == seccion]), crpix2, crpix1,
-                           int((coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) / crpix1),
-                           int((coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) / crpix2)])
+
+
+        naxis1_expected = int((coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) / crpix1)
+        naxis2_expected = int((coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) / crpix2)
+        if (coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) % crpix1 != 0:
+            naxis1_expected += 1
+        if (coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) % crpix2 != 0:
+            naxis2_expected += 1
 
         master_biases = np.zeros((secciones_count_[seccion],
-                                  int((coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) / crpix1),
-                                  int((coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) / crpix2)))
-
+                                  naxis1_expected,
+                                  naxis2_expected), dtype=float)
+        mostrarresultados(['N', 'Crpix2', 'Crpix1', 'A', 'B'],
+                          [len(indice_seccion_[indice_seccion_ == seccion]), crpix2, crpix1,
+                           naxis1_expected, naxis2_expected])
         indice0 = 0
         slicing_push = False
         for imagen in range(len(lista_bias_)):
@@ -213,6 +219,8 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
                 image_data = fits.getdata(image_file, ext=0)
                 if image_data[:, :].shape == master_biases[indice0, :, :].shape:
                     master_biases[indice0, :, :] = image_data[:, :]                     # Juntar
+                    if indice0 == 0:
+                        cabecera = fits.open(image_file)[0].header
                 else:
                     size_mb = master_biases[indice0, :, :].shape
                     size_da = image_data[:, :].shape
@@ -233,35 +241,37 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
                         print("Master Bias size: " + str(size_mb) + "\n")
                         print("Skipping current Master Bias.")
                         print("Consider using slicing with '--recortar'. ")
-                        input("Press Enter to continue")
+                        input("Press Enter to continue...")
                         break
                 indice0 += 1
 
         master_bias_colapsado = np.median(master_biases, axis=0)
+        # print(master_bias_colapsado)
+        # print(master_bias_colapsado.shape)
+        # print(master_bias_colapsado)
+        # plt.imshow(master_bias_colapsado)
+        # ImP.imgdibujar(master_bias_colapsado, verbose_=1)
         nombre_archivo = noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}.fits".format(x1, x2, y1, y2)
-        masterbias_final = fits.PrimaryHDU(master_bias_colapsado)
-        masterbias_header = fits.open(dir_datos_ + noche + '/' + lista_bias_[0])[0].header
-
+        masterbias_header = cabecera.copy()
         if masterbias_header['BLANK']:
             del masterbias_header['BLANK']
-        masterbias_final.header = masterbias_header
 
-        if nombre_archivo in os.listdir(dir_bias_):
-            os.remove(dir_bias_ + nombre_archivo)
+        masterbias_final = fits.PrimaryHDU(master_bias_colapsado.astype(np.float), masterbias_header)
 
-        masterbias_final.writeto(dir_bias_ + nombre_archivo)
+        masterbias_final.writeto(dir_bias_ + nombre_archivo, overwrite=True)
 
         if verbose >= 1:
             coord_lim = ImP.limites_imagen(*coordenadas_dibujo)
             ImP.imgdibujar(master_bias_colapsado, *coordenadas_dibujo, *coord_lim, verbose_=1)
 
         if interactive:
+            # plt.show()
             input("Press Enter to continue...")
 
 
 def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbose, interactive, recortar):
     i_noche = 0
-    for noche in lista_noches:
+    for noche in lista_noches[35:]:
         i_noche += 1
         print('=== NOCHE ' + noche + ' - (' + str(i_noche) + '/' + str(len(lista_noches)) + ') ===')
         secciones = []
@@ -446,8 +456,3 @@ if __name__ == "__main__":
 
 # https://pyformat.info
 # "str{0:04d}".format(210)
-
-
-
-
-

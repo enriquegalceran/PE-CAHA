@@ -83,8 +83,18 @@ def escala(image2d, modo='cuantil'):
     return back_fore
 
 
-def imgdibujar(image2d, x1, x2, y1, y2, xmin, xmax, ymin, ymax, cmap='hot',
+def imgdibujar(image2d, x1=None, x2=None, y1=None, y2=None,
+               xmin=None, xmax=None, ymin=None, ymax=None,
+               cmap='hot',
                background=None, foreground=None, verbose_=0):
+
+    if not x1 and not x2 and not y1 and not y2 and not xmin and not xmax and not ymin and not ymax:
+        x1 = 0
+        y1 = 0
+        x2 = image2d.shape[1]
+        y2 = image2d.shape[0]
+        limites = limites_imagen(x1, x2, y1, y2)
+        xmin, xmax, ymin, ymax = deshacer_tupla(limites)
 
     if not background:
         background = np.percentile(image2d, 10)
@@ -97,11 +107,13 @@ def imgdibujar(image2d, x1, x2, y1, y2, xmin, xmax, ymin, ymax, cmap='hot',
                           [x1, x2, y1, y2, xmin, xmax, ymin, ymax,
                            background, foreground, round((xmax-xmin)/(ymax-ymin), 2)],
                           titulo='Parametros Imagen')
+
     # Se puede ir ampliando a medida que tenga mas funciones
     plt.figure()
     plt.imshow(image2d[(y1 - 1):y2, (x1 - 1):x2], cmap=cmap, aspect='auto',
                vmin=background, vmax=foreground,
-               interpolation='nearest', origin='low',
+               interpolation='nearest',
+               origin='low',
                extent=[xmin, xmax, ymin, ymax])
     plt.colorbar()
     plt.show()
