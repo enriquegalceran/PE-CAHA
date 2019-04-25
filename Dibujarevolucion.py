@@ -5,11 +5,8 @@ import IMGPlot as ImP
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
-import csv
-from numpy import genfromtxt
 import argparse
-import time
-import warnings
+
 import datetime
 # your_date = datetime.datetime.strptime("31/12/2016", "%d/%m/%Y")
 
@@ -18,11 +15,25 @@ def stdrobusta(array):
     return 0.7413 * (np.quantile(array.reshape(-1,), 0.75) - np.quantile(array.reshape(-1,), 0.25))
 
 
+def obtener_valores(image_data, header):
+    valor_std = np.std(image_data)
+    valor_stdrob = stdrobusta(image_data)
+    valor_medio = np.mean(image_data)
+    valor_mediana = np.median(image_data)
+    rel_medio_mediana = (valor_medio - valor_mediana) / valor_mediana * 100
+    temperatura = header['CCDTEMP']
+    fechanorm = header['DATE']
+    your_date = datetime.datetime.strptime(fechanorm, "20%y-%m-%dT%H:%M:%S")
+    lista_imagen = [valor_medio, valor_mediana, rel_medio_mediana, valor_std, valor_stdrob, temperatura, your_date]
+    return lista_imagen
+
+
 def main():
     # --------------- Valores por defecto -----------------------------------------
     default_dir_datos = 'CAFOS2017/'
     default_dir_bias = '/media/enrique/TOSHIBA EXT/CAHA/Biases2/'
     default_dir_listas = 'Listas/'
+    recortado = True
     # -----------------------------------------------------------------------------
 
     parser = argparse.ArgumentParser(description="Bias and Flat calibration of CAFOS images")
@@ -46,21 +57,15 @@ def main():
         image_header = hdul[0].header
         image_data = fits.getdata(args.dir_bias + imagen, ext=0)
         hdul.close()
-        valor_std = np.std(image_data)
-        valor_stdrob = stdrobusta(image_data)
-        valor_medio = np.mean(image_data)
-        valor_mediana = np.median(image_data)
-        rel_medio_mediana = (valor_medio-valor_mediana)/valor_mediana*100
-        temperatura = image_header['CCDTEMP']
-        # fechajul = image_header['MJD-OBS']
-        fechanorm = image_header['DATE']
-        your_date = datetime.datetime.strptime(fechanorm, "20%y-%m-%dT%H:%M:%S")
+        if recortado:
+            tamano = image_data.shape
+            secciones0 = (int(tamano[0]/3), int(tamano[0]*2/3))
+            secciones1 = (int(tamano[1]/3), int(tamano[1]*2/3))
+            image_data = image_data[secciones0[0]:secciones0[1], secciones1[0]:secciones1[1]]
+        lista_resultados = obtener_valores(image_data, image_header)
         i += 1
-        lista_imagen = [valor_medio, valor_mediana, rel_medio_mediana, valor_std, valor_stdrob, temperatura, your_date]
-        df.loc[i] = np.asarray(lista_imagen)
+        df.loc[i] = np.asarray(lista_resultados)
 
-        # print(valor_medio, valor_varia, temperatura)
-        # input("continuar")
     df = df.sort_values(by='Fecha', ascending=True).reset_index()
     df = df.drop(df.index[13])
 
@@ -93,10 +98,6 @@ def main():
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     plt.title('Evolucion del Bias a lo largo del año y la temperatura')
     plt.show()
-
-
-
-
 
 
 if __name__ == "__main__":
