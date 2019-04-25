@@ -14,15 +14,8 @@ import datetime
 # your_date = datetime.datetime.strptime("31/12/2016", "%d/%m/%Y")
 
 
-def transformar_a_int(fecha):
-    ye = fecha.year
-    mo = fecha.month
-    da = fecha.day
-    ho = fecha.hour
-    mi = fecha.minute
-    se = fecha.second
-
-    numero = ho/24 + mi/(24*60) + se/(24*3600) + 365*ye + mo
+def stdrobusta(array):
+    return 0.7413 * (np.quantile(array.reshape(-1,), 0.75) - np.quantile(array.reshape(-1,), 0.25))
 
 
 def main():
@@ -45,46 +38,65 @@ def main():
     args = parser.parse_args()
 
     lista_noches = os.listdir(args.dir_bias)
-    df = pd.DataFrame(columns=['FechaJ', 'Medio', 'Var', 'Temp', 'Fecha'])
+    df = pd.DataFrame(columns=['Medio', 'Mediana', 'Relacion', 'Std', 'Stdrob', 'Temp', 'Fecha'])
 
-    dfq = pd.DataFrame(columns=['lib', 'qty1', 'qty2'])
-    for i in range(5):
-        dfq.loc[i] = [np.random.randint(-1, 1) for n in range(3)]
-
-
-
-    lista_fecha = []
     i = 0
     for imagen in lista_noches:
-        # print(imagen)
         hdul = fits.open(args.dir_bias + imagen)
         image_header = hdul[0].header
         image_data = fits.getdata(args.dir_bias + imagen, ext=0)
         hdul.close()
-        plt.imshow(image_data)
-        plt.show()
-        print(image_data)
-        valor_varia = np.var(image_data)
+        valor_std = np.std(image_data)
+        valor_stdrob = stdrobusta(image_data)
         valor_medio = np.mean(image_data)
+        valor_mediana = np.median(image_data)
+        rel_medio_mediana = (valor_medio-valor_mediana)/valor_mediana*100
         temperatura = image_header['CCDTEMP']
-        fechajul = image_header['MJD-OBS']
+        # fechajul = image_header['MJD-OBS']
         fechanorm = image_header['DATE']
-        lista_imagen = [fechajul, valor_medio, valor_varia, temperatura, fechanorm]
-        df.loc[i] = np.asarray(lista_imagen)
-        i += 1
         your_date = datetime.datetime.strptime(fechanorm, "20%y-%m-%dT%H:%M:%S")
-        lista_fecha.append(your_date)
-        print(your_date.year, your_date.day, your_date.month, your_date.hour, your_date.minute, your_date.second)
+        i += 1
+        lista_imagen = [valor_medio, valor_mediana, rel_medio_mediana, valor_std, valor_stdrob, temperatura, your_date]
+        df.loc[i] = np.asarray(lista_imagen)
 
         # print(valor_medio, valor_varia, temperatura)
         # input("continuar")
+    df = df.sort_values(by='Fecha', ascending=True).reset_index()
+    df = df.drop(df.index[13])
 
+    print(df)
     eje_x = df.Fecha.values
-    eje_y = df.Medio.values
-    print(eje_y)
+    medianas = df.Medio.values
+    stdrob = df.Stdrob.values
+    temp = df.Temp.values
 
-    plt.plot(lista_fecha, eje_y)
+    #######################################################
+    fig, ax1 = plt.subplots()
+
+    color = 'tab:red'
+    ax1.set_xlabel('fecha')
+    ax1.set_ylabel('Cuentas', color=color)
+    # ax1.scatter(eje_x, medianas, color=color)
+    ax1.tick_params(axis='y', labelcolor=color)
+    ax1.errorbar(eje_x, medianas, stdrob, color=color, fmt='o')
+
+    # ax1.plot(eje_x, medias + stdrob, color=color)
+    # ax1.plot(eje_x, medias - stdrob, color=color)
+
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+    color = 'tab:green'
+    ax2.set_ylabel('Temperatura', color=color)  # we already handled the x-label with ax1
+    ax2.scatter(eje_x, temp, color=color)
+    ax2.tick_params(axis='y', labelcolor=color)
+
+    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+    plt.title('Evolucion del Bias a lo largo del año y la temperatura')
     plt.show()
+
+
+
+
 
 
 if __name__ == "__main__":
