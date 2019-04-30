@@ -1,5 +1,5 @@
 import numpy as np
-from Salida_limpia import mostrarresultados
+from Salida_limpia import mostrarresultados, stdrobusta
 # import pandas as pd
 import matplotlib.pyplot as plt
 # import os
@@ -152,8 +152,10 @@ def main():
             resultverbose = []
             resuldverbose = []
 
-        mostrarresultados(resultverbose + ['NAXIS1', 'NAXIS2'],
-                          resuldverbose + [hdr['NAXIS1'], hdr['NAXIS2']],
+        mostrarresultados(resultverbose + ['NAXIS1', 'NAXIS2', -1,
+                                           'Mediana', 'Std'],
+                          resuldverbose + [hdr['NAXIS1'], hdr['NAXIS2'], -1,
+                                           np.median(image2d), stdrobusta(image2d, 2)],
                           titulo='Parametros')
 
     coordenadas_dibujo, limite_coordenadas = coordenadas(*coordenadas_a_dibujar, args, hdr)

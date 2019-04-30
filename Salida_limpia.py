@@ -21,6 +21,13 @@ def meter0(x, n):
     return x
 
 
+def stdrobusta(array, redondear=None):
+    salida = 0.7413 * (np.quantile(array.reshape(-1,), 0.75) - np.quantile(array.reshape(-1,), 0.25))
+    if redondear:
+        salida = np.round(salida, redondear)
+    return salida
+
+
 def mostrarresultados(nombres, valores, contador=None, valor_max=None, titulo='Resultados', relleno='.', separador='%'):
     tamanyo = []
     if contador:

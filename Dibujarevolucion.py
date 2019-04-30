@@ -1,5 +1,5 @@
 from astropy.io import fits
-from Salida_limpia import mostrarresultados
+from Salida_limpia import mostrarresultados, stdrobusta
 import numpy as np
 import IMGPlot as ImP
 import pandas as pd
@@ -9,10 +9,6 @@ import argparse
 
 import datetime
 # your_date = datetime.datetime.strptime("31/12/2016", "%d/%m/%Y")
-
-
-def stdrobusta(array):
-    return 0.7413 * (np.quantile(array.reshape(-1,), 0.75) - np.quantile(array.reshape(-1,), 0.25))
 
 
 def obtener_valores(image_data, header):
@@ -67,7 +63,9 @@ def main():
         df.loc[i] = np.asarray(lista_resultados)
 
     df = df.sort_values(by='Fecha', ascending=True).reset_index()
-    df = df.drop(df.index[13])
+    # print(df)
+    # print('quitamos')
+    # df = df.drop(df.index[13])
 
     print(df)
     eje_x = df.Fecha.values

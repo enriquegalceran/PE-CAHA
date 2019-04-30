@@ -1,5 +1,5 @@
 from astropy.io import fits
-from Salida_limpia import mostrarresultados, stdrobusta
+from Salida_limpia import mostrarresultados
 import numpy as np
 import IMGPlot as ImP
 # import pandas as pd
@@ -33,123 +33,6 @@ def listas_archivos(path_):
     return lista_cal, lista_sci, lista_misc, listaarchivos
 
 
-def imagen_mas_probable(archivo):
-    image_data = fits.getdata(archivo, ext=0)
-    v_median = np.median(image_data)
-    v_sd = stdrobusta(image_data)
-    if v_sd < 50 and v_median < 900:
-        probable = 0  # Bias
-    elif v_sd < 500:
-        probable = 1  # Arc
-    else:
-        probable = 2  # Flat
-
-    return probable
-
-
-def comprobar(archivo, descriptor, descriptor2=None, descriptor3=None, verbose=False):
-    if any([descriptor2, descriptor3]):
-        descriptortemp = descriptor + descriptor2 + descriptor3
-        coincide = True
-        for texto in descriptortemp:
-            if texto in fits.open(archivo)[0].header['OBJECT']:
-                # Alguno coincide, no es ciencia
-                coincide = False
-                break
-    else:
-        coincide = False
-        for texto in descriptor:
-            if texto in fits.open(archivo)[0].header['OBJECT']:
-                # Sale bien
-                coincide = True
-                break
-    if verbose:
-        print(archivo, fits.open(archivo)[0].header['OBJECT'], fits.open(archivo)[0].header['imagetyp'], coincide)
-
-    return coincide
-
-
-def listas_archivos2(path_, desc_bias, desc_flats, desc_arc, verbose=False):
-    lista_cal = []
-    lista_sci = []
-    lista_misc = []
-    lista_bias = []
-    lista_flat = []
-    lista_ciencia = []
-    lista_arc = []
-    lista_else = []
-    listaarchivos = []
-    lista_falla = []
-
-    # Miramos todos los archivos dentro de la carpeta
-    for file in os.listdir(path_):
-        if file.endswith(".fits"):
-            if '-cal-' in file:
-                lista_cal.append(file)
-            elif '-sci-' in file:
-                lista_sci.append(file)
-            else:
-                lista_misc.append(file)
-            listaarchivos.append(os.path.join(path_, file))
-
-            # Separamos segun IMAGETYP
-            tipo = fits.open(path_ + file)[0].header['IMAGETYP'].strip()
-            if not fits.open(path_ + file)[0].header['OBJECT'] == 'Test':  # Comprobamos que no es un test
-                if tipo == 'BIAS' or tipo == 'bias':
-                    coincide = comprobar(path_ + file, desc_bias, verbose)
-                    if coincide:
-                        lista_bias.append(file)
-                    else:
-                        lista_falla.append(file)
-
-                elif tipo == 'flat':
-                    coincide = comprobar(path_ + file, desc_flats, verbose)
-                    if coincide:
-                        lista_flat.append(file)
-                    else:
-                        lista_falla.append(file)
-
-                elif tipo == 'arc':
-                    coincide = comprobar(path_ + file, desc_arc, verbose)
-                    if coincide:
-                        lista_arc.append(file)
-                    else:
-                        lista_falla.append(file)
-
-                elif tipo == 'science':
-                    coincide = comprobar(path_ + file, desc_bias, desc_flats, desc_arc, verbose)
-                    if coincide:
-                        lista_ciencia.append(file)
-                    else:
-                        lista_falla.append(file)
-
-                else:
-                    lista_else.append(file)
-
-    for file in lista_falla:
-        if file in lista_sci:
-            lista_ciencia.append(file)
-
-        probable = imagen_mas_probable(path_ + file)
-
-        if probable == 0:
-            lista_bias.append(file)
-        elif probable == 1:
-            lista_arc.append(file)
-        elif probable == 2:
-            lista_flat.append(file)
-
-    # Aseguramos que estan ordenadas
-    # lista_bias = lista_bias.sort()
-    # lista_flat = lista_flat.sort()
-    # lista_arc = lista_arc.sort()
-    # lista_ciencia = lista_ciencia.sort()
-    # listaarchivos = listaarchivos.sort()
-    # lista_falla = lista_falla.sort()
-
-    return lista_bias, lista_flat, lista_arc, lista_ciencia, listaarchivos, lista_falla
-
-
 def guardar_listas_csv(csvfile, res):
     with open(csvfile, "w") as output:
         writer = csv.writer(output, lineterminator='\n')
@@ -157,7 +40,27 @@ def guardar_listas_csv(csvfile, res):
             writer.writerow([val])
 
 
-def crear_listas_cal_y_sci(lista_noches_, dir_listas_, dir_datos_, desc_bias, desc_flats, desc_arc, verbose):
+def listas_calibracion(path, calib, desc_bias, desc_flats, desc_misc):
+    lista_bias = []
+    lista_flats = []
+    lista_misc = []
+    
+    for file in calib:
+        for texto in desc_bias:
+            if texto in fits.open(path + file)[0].header['OBJECT']:
+                lista_bias.append(file)
+                break
+        for texto in desc_flats:
+            if texto in fits.open(path + file)[0].header['OBJECT']:
+                lista_flats.append(file)
+                break
+        for text in desc_misc:
+            if text in fits.open(path + file)[0].header['OBJECT']:
+                lista_misc.append(file)    
+    return lista_bias, lista_flats, lista_misc
+
+
+def crear_listas_cal_y_sci(lista_noches_, dir_listas_, dir_datos_, desc_bias, desc_flats, desc_misc):
     i = 0
     for noche in lista_noches_:
         i += 1
@@ -169,23 +72,19 @@ def crear_listas_cal_y_sci(lista_noches_, dir_listas_, dir_datos_, desc_bias, de
             # MIS = []
             # ARC = []
             path_ = dir_datos_ + noche + '/'
-            l_bias, l_flat, l_arc, l_ciencia, l_archivos, l_falla = listas_archivos2(path_,
-                                                                                     desc_bias,
-                                                                                     desc_flats,
-                                                                                     desc_arc,
-                                                                                     verbose)
+            cal, sci, mis, arc = listas_archivos(path_)
+            l_bias, l_flat, l_misc = listas_calibracion(path_, cal, desc_bias, desc_flats, desc_misc)
 
-            mostrarresultados(['Bias', 'Flat', 'Arc', 'Ciencia', 'Falla'],
-                              [len(l_bias), len(l_flat), len(l_arc), len(l_ciencia), len(l_falla)],
-                              titulo=noche, contador=i, valor_max=len(lista_noches_))
+            mostrarresultados(['Bias', 'Flat', 'Misc'], [len(l_bias), len(l_flat), len(l_misc)], titulo=noche,
+                              contador=i, valor_max=len(lista_noches_))
 
-            # guardar_listas_csv(dir_listas_ + noche + '/' + 'CAL.csv', cal)
-            guardar_listas_csv(dir_listas_ + noche + '/' + 'SCI.csv', l_ciencia)
-            guardar_listas_csv(dir_listas_ + noche + '/' + 'ARC.csv', l_archivos)
+            guardar_listas_csv(dir_listas_ + noche + '/' + 'CAL.csv', cal)
+            guardar_listas_csv(dir_listas_ + noche + '/' + 'SCI.csv', sci)
+            guardar_listas_csv(dir_listas_ + noche + '/' + 'MIS.csv', mis)
+            guardar_listas_csv(dir_listas_ + noche + '/' + 'ARC.csv', arc)
             guardar_listas_csv(dir_listas_ + noche + '/' + 'LBias.csv', l_bias)
             guardar_listas_csv(dir_listas_ + noche + '/' + 'LFlat.csv', l_flat)
-            guardar_listas_csv(dir_listas_ + noche + '/' + 'LArc.csv', l_arc)
-            guardar_listas_csv(dir_listas_ + noche + '/' + 'Errores.csv', l_falla)
+            guardar_listas_csv(dir_listas_ + noche + '/' + 'LMisc.csv', l_misc)
 
 
 #####################################################################
@@ -297,6 +196,8 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
         crpix1 = bin_secciones_[seccion, 1]
         crpix2 = bin_secciones_[seccion, 0]
 
+
+
         naxis1_expected = int((coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) / crpix1)
         naxis2_expected = int((coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) / crpix2)
         if (coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) % crpix1 != 0:
@@ -309,8 +210,7 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
                                   naxis2_expected), dtype=float)
         mostrarresultados(['N', 'Crpix2', 'Crpix1', 'A', 'B'],
                           [len(indice_seccion_[indice_seccion_ == seccion]), crpix2, crpix1,
-                           naxis1_expected, naxis2_expected],
-                          titulo='Bias Realizado')
+                           naxis1_expected, naxis2_expected])
         indice0 = 0
         slicing_push = False
         for imagen in range(len(lista_bias_)):
@@ -353,8 +253,8 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
         # ImP.imgdibujar(master_bias_colapsado, verbose_=1)
         nombre_archivo = noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}.fits".format(x1, x2, y1, y2)
         masterbias_header = cabecera.copy()
-        # if masterbias_header['BLANK']:
-        #     del masterbias_header['BLANK']
+        if masterbias_header['BLANK']:
+            del masterbias_header['BLANK']
 
         masterbias_final = fits.PrimaryHDU(master_bias_colapsado.astype(np.float), masterbias_header)
 
@@ -371,7 +271,7 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
 
 def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbose, interactive, recortar):
     i_noche = 0
-    for noche in lista_noches:
+    for noche in lista_noches[35:]:
         i_noche += 1
         print('=== NOCHE ' + noche + ' - (' + str(i_noche) + '/' + str(len(lista_noches)) + ') ===')
         secciones = []
@@ -423,8 +323,8 @@ def main():
     default_dir_bias = 'Biases/'
     default_dir_listas = 'Listas/'
     desc_bias = ['bias', 'Bias', 'BIAS']
-    desc_flats = ['flats', 'FLATS', 'FLAT', 'Flats', 'Flat', 'flat', 'Skyflat', 'SDkyflat']
-    desc_arc = ['arc', 'ARC']
+    desc_flats = ['flats', 'FLATS', 'Flats', 'Flat', 'flat', 'Skyflat', 'SDkyflat']
+    desc_misc = ['arc']
     # -----------------------------------------------------------------------------
 
     parser = argparse.ArgumentParser(description="Bias and Flat calibration of CAFOS images")
@@ -442,7 +342,7 @@ def main():
     lista_noches = os.listdir(args.dir_datos)
     tiempo_inicio_listas = time.time()
 
-    crear_listas_cal_y_sci(lista_noches, args.dir_listas, args.dir_datos, desc_bias, desc_flats, desc_arc, args.verbose)
+    crear_listas_cal_y_sci(lista_noches, args.dir_listas, args.dir_datos, desc_bias, desc_flats, desc_misc)
     tiempo_medio = time.time()
 
     realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
