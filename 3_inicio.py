@@ -66,6 +66,8 @@ def comprobar(archivo, descriptor, descriptor2=None, descriptor3=None, verbose=F
     if verbose:
         print(archivo, fits.open(archivo)[0].header['OBJECT'], fits.open(archivo)[0].header['imagetyp'], coincide)
 
+    # Quiza meterle algo de que si object=test que lo ignore
+
     return coincide
 
 

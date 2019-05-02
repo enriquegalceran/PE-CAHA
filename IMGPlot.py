@@ -102,10 +102,15 @@ def imgdibujar(image2d, x1=None, x2=None, y1=None, y2=None,
         foreground = np.percentile(image2d, 90)
 
     if verbose_ == 1:
-        mostrarresultados(['x1', 'x2', 'y1', 'y2', 'xmin', 'xmax', 'ymin', 'ymax',
-                           'background', 'foreground', 'relacion Y/X'],
-                          [x1, x2, y1, y2, xmin, xmax, ymin, ymax,
-                           background, foreground, round((xmax-xmin)/(ymax-ymin), 2)],
+        mostrarresultados(['x1', 'x2', 'y1', 'y2', -1,
+                           'xmin', 'xmax', 'ymin', 'ymax', -1,
+                           'background', 'foreground', -1,
+                           'Mediana', 'Media', 'Std', 'relacion Y/X'],
+                          [x1, x2, y1, y2, -1,
+                           xmin, xmax, ymin, ymax, -1,
+                           background, foreground, -1,
+                           np.median(image2d), np.mean(image2d), stdrobusta(image2d, 2),
+                           round((xmax-xmin)/(ymax-ymin), 2)],
                           titulo='Parametros Imagen')
 
     # Se puede ir ampliando a medida que tenga mas funciones
