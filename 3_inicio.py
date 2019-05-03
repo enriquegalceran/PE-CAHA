@@ -33,6 +33,28 @@ def listas_archivos(path_):
     return lista_cal, lista_sci, lista_misc, listaarchivos
 
 
+def crear_lista_unicos(dir_datos, noche, lista_cosas, cabecera='INSFLID', binning=False):
+    lista = []
+
+    for imagen in lista_cosas:
+        lista.append(fits.open(dir_datos + noche + '/' + imagen)[0].header[cabecera])
+    lista_unicas, lista_count = np.unique(lista, return_counts=True)  # Contamos secciones unicas
+
+    if binning:
+        bin_secciones = -1 * np.ones((len(lista_unicas), 2), dtype=int)
+    indice_cosas = np.zeros(len(lista_cosas), dtype=int)
+    for i in range(len(lista_cosas)):
+        for j in range(len(lista_unicas)):
+            if lista[i] == lista_unicas[j]:
+                indice_cosas[i] = j
+                if binning:
+                    bin_secciones[j, 0] = int(fits.open(dir_datos + noche + '/' + lista_cosas[i])[0].header['crpix2'])
+                    bin_secciones[j, 1] = int(fits.open(dir_datos + noche + '/' + lista_cosas[i])[0].header['crpix1'])
+                break
+
+    return lista, lista_unicas, lista_count, indice_cosas, bin_secciones
+
+
 def imagen_mas_probable(archivo):
     image_data = fits.getdata(archivo, ext=0)
     v_median = np.median(image_data)
@@ -376,13 +398,13 @@ def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbos
     for noche in lista_noches:
         i_noche += 1
         print('=== NOCHE ' + noche + ' - (' + str(i_noche) + '/' + str(len(lista_noches)) + ') ===')
-        secciones = []
+
         lista_bias = leer_lista(dir_listas + noche + '/' + 'LBias.csv')
         lista_bias = [item for sublist in lista_bias for item in sublist]  # Limpiamos la lista para poder usarla
 
-        for imagen in lista_bias:
-            secciones.append(fits.open(dir_datos + noche + '/' + imagen)[0].header['CCDSEC'])
-        secciones_unicas, secciones_count = np.unique(secciones, return_counts=True)  # Contamos secciones unicas
+        secciones, secciones_unicas, secciones_count, indice_seccion, bin_secciones = crear_lista_unicos(
+            dir_datos, noche, lista_bias, cabecera='CCDSEC', binning=True
+        )
 
         # Variables:
         # secciones_unicas: lista de STR con las diferentes configuraciones de CCD que se usan
@@ -391,21 +413,6 @@ def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbos
         # indice_seccion: INT con cual de las secciones pertenecen las calibraciones
         # coordenadas_secciones: coordenadas de las dierentes secciones
         # size-secciones: tamanyo de las imagenes en cada seccion
-
-        # print('secciones_unicas')
-        # print(secciones_unicas)
-        # print('secciones_count')
-        # print(secciones_count)
-        # print('%%%%%%%%%%%%%%%%')
-
-        bin_secciones = -1 * np.ones((len(secciones_unicas), 2), dtype=int)
-        indice_seccion = np.zeros(len(lista_bias), dtype=int)
-        for i in range(len(lista_bias)):
-            for j in range(len(secciones_unicas)):
-                if secciones[i] == secciones_unicas[j]:
-                    indice_seccion[i] = j
-                    bin_secciones[j, 0] = int(fits.open(dir_datos + noche + '/' + lista_bias[i])[0].header['crpix2'])
-                    bin_secciones[j, 1] = int(fits.open(dir_datos + noche + '/' + lista_bias[i])[0].header['crpix1'])
 
         coordenadas_secciones = np.zeros((len(secciones_unicas), 4), dtype=int)
         for i in range(len(secciones_unicas)):

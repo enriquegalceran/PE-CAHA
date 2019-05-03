@@ -195,24 +195,43 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
             input("Press Enter to continue...")
 
 
+def crear_lista_unicos(dir_datos, noche, lista_cosas, cabecera='INSFLID', binning=False):
+    lista = []
+
+    for imagen in lista_cosas:
+        lista.append(fits.open(dir_datos + noche + '/' + imagen)[0].header[cabecera])
+    lista_unicas, lista_count = np.unique(lista, return_counts=True)  # Contamos secciones unicas
+
+    bin_secciones = -1 * np.ones((len(lista_unicas), 2), dtype=int)
+    indice_cosas = np.zeros(len(lista_cosas), dtype=int)
+    for i in range(len(lista_cosas)):
+        for j in range(len(lista_unicas)):
+            if lista[i] == lista_unicas[j]:
+                indice_cosas[i] = j
+                if binning:
+                    bin_secciones[j, 0] = int(fits.open(dir_datos + noche + '/' + lista_cosas[i])[0].header['crpix2'])
+                    bin_secciones[j, 1] = int(fits.open(dir_datos + noche + '/' + lista_cosas[i])[0].header['crpix1'])
+                break
+
+    return lista, lista_unicas, lista_count, indice_cosas, bin_secciones
+
+
 def realizar_master_flats(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats, verbose, interactive, recortar):
     i_noche = 0
     for noche in lista_noches:
         i_noche += 1
         print('=== NOCHE ' + noche + ' - (' + str(i_noche) + '/' + str(len(lista_noches)) + ') ===')
-        secciones = []
-        filtros = []
 
         lista_flats = leer_lista(dir_listas + noche + '/' + 'LFlat.csv')
         lista_flats = [item for sublist in lista_flats for item in sublist]  # Limpiamos la lista para poder usarla
 
-        for imagen in lista_flats:
-            secciones.append(fits.open(dir_datos + noche + '/' + imagen)[0].header['CCDSEC'])
-        secciones_unicas, secciones_count = np.unique(secciones, return_counts=True)  # Contamos secciones unicas
+        secciones, secciones_unicas, secciones_count, indice_seccion, bin_secciones = crear_lista_unicos(
+            dir_datos, noche, lista_flats, cabecera='CCDSEC', binning=True
+        )
 
-        for filtro in lista_flats:
-            filtros.append(fits.open(dir_datos + noche + '/' + filtro)[0].header['INSFLID'])
-        filtros_unicos, filtros_count = np.unique(filtros, return_counts=True)  # Contamos filtros unicos
+        filtros, filtros_unicos, filtros_count, indice_filtro, _ = crear_lista_unicos(
+            dir_datos, noche, lista_flats, cabecera='INSFLID', binning=False
+        )
 
         # Variables:
         # secciones_unicas: lista de STR con las diferentes configuraciones de CCD que se usan
@@ -221,23 +240,6 @@ def realizar_master_flats(lista_noches, dir_listas, dir_datos, dir_bias, dir_fla
         # indice_seccion: INT con cual de las secciones pertenecen las calibraciones
         # coordenadas_secciones: coordenadas de las dierentes secciones
         # size-secciones: tamanyo de las imagenes en cada seccion
-
-        bin_secciones = -1 * np.ones((len(secciones_unicas), 2), dtype=int)
-        indice_seccion = np.zeros(len(lista_flats), dtype=int)
-        indice_filtro = np.zeros(len(lista_flats), dtype=int)
-        for i in range(len(lista_flats)):
-            for j in range(len(secciones_unicas)):
-                if secciones[i] == secciones_unicas[j]:
-                    indice_seccion[i] = j
-                    bin_secciones[j, 0] = int(fits.open(dir_datos + noche + '/' + lista_flats[i])[0].header['crpix2'])
-                    bin_secciones[j, 1] = int(fits.open(dir_datos + noche + '/' + lista_flats[i])[0].header['crpix1'])
-                    break
-
-        for i in range(len(lista_flats)):
-            for j in range(len(filtros_unicos)):
-                if filtros[i] == filtros_unicos[j]:
-                    indice_filtro[i] = j
-                    break
 
         coordenadas_secciones = np.zeros((len(secciones_unicas), 4), dtype=int)
         for i in range(len(secciones_unicas)):
@@ -248,6 +250,7 @@ def realizar_master_flats(lista_noches, dir_listas, dir_datos, dir_bias, dir_fla
         for i in range(len(lista_flats)):
             numero_filtro[i] = int(filtros_unicos[indice_filtro[i]][-2:])
         print(numero_filtro)
+        print(indice_seccion)
         print(filtros_unicos, filtros_count)
 
         juntar_imagenes(noche, secciones_unicas, coordenadas_secciones, secciones_count, indice_seccion, bin_secciones,
