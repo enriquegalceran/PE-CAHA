@@ -99,7 +99,6 @@ def slicing_data(slicing_push, size_da, size_mb):
 
 def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_count_, indice_seccion_,
                     bin_secciones_, dir_bias_, dir_datos_, dir_flats_, lista_flats_,
-                    numero_filtro, filtros_unicos, filtros_count,
                     verbose=0, interactive=False, recortar=False):
 
     for seccion in range(len(secciones_unicas_)):
@@ -118,81 +117,100 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
         if (coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) % crpix2 != 0:
             naxis2_expected += 1
 
-        master_flats = np.zeros((secciones_count_[seccion], naxis1_expected, naxis2_expected), dtype=float)
-        mostrarresultados(['N', 'Crpix2', 'Crpix1', 'A', 'B'],
-                          [len(indice_seccion_[indice_seccion_ == seccion]), crpix2, crpix1,
-                           naxis1_expected, naxis2_expected])
-        indice0 = 0
-        slicing_push = False
+        lista_coincide = []
         for imagen in range(len(lista_flats_)):
             if indice_seccion_[imagen] == seccion:
-                image_file = dir_datos_ + noche + '/' + lista_flats_[imagen]
-                image_data = fits.getdata(image_file, ext=0)
-                if image_data[:, :].shape == master_flats[indice0, :, :].shape:
-                    master_flats[indice0, :, :] = image_data[:, :]                     # Juntar
-                    if indice0 == 0:
-                        cabecera = fits.open(image_file)[0].header
-                else:
-                    size_mb = master_flats[indice0, :, :].shape
-                    size_da = image_data[:, :].shape
-                    if recortar:
-                        if not slicing_push:
-                            warnings.warn("Sizes Incompatible!")
-                            print("Sizes incompatible:")
-                            print("Data size: " + str(size_da))
-                            print("Master Bias size: " + str(size_mb) + "\n")
-                            slicing_push = (input("Slicing fits. "
-                                                  "Select side towards to push (SW), SE, NE, NW: ") or "SW")
-                        s1, s2, s3, s4 = slicing_data(slicing_push, size_da, size_mb)
-                        master_flats[indice0, :, :] = image_data[s1:s2, s3:s4]
-                    else:
-                        warnings.warn("Sizes Incompatible!")
-                        print("Sizes incompatible:")
-                        print("Data size: " + str(size_da))
-                        print("Master Bias size: " + str(size_mb) + "\n")
-                        print("Skipping current Master Bias.")
-                        print("Consider using slicing with '--recortar'. ")
-                        input("Press Enter to continue...")
-                        break
-                indice0 += 1
+                lista_coincide.append(lista_flats_[imagen])
 
-        # Restamos Bias
-        bias_asociado_nombre = dir_bias_ + noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}.fits".format(x1, x2, y1, y2)
-        bias_asociado = fits.getdata(bias_asociado_nombre, ext=0)
-        for i in range(master_flats.shape[0]):
-            master_flats[i, :, :] = master_flats[i, :, :] - bias_asociado
+        filtros, filtros_unicos, filtros_count, indice_filtro, _ = crear_lista_unicos(dir_datos_, noche, lista_coincide,
+                                                                                      cabecera='INSFLID', binning=False)
 
-        # Normalizamos
-        valor_medio = np.zeros(master_flats.shape[0], dtype=float)
-        for i in range(master_flats.shape[0]):
-            valor_medio[i] = np.mean(master_flats[i, :, :], dtype=float)
-            master_flats[i, :, :] = np.true_divide(master_flats[i, :, :], valor_medio[i])
+        numero_filtro = np.zeros(len(filtros_unicos), dtype=int)
+        p = 0
+        for i in filtros_unicos:
+            numero_filtro[p] = int(i[-2:].strip())
+            p += 1
 
-        valor_medio2 = np.zeros(master_flats.shape[0], dtype=float)
-        for i in range(master_flats.shape[0]):
-            valor_medio2[i] = np.mean(master_flats[i, :, :], dtype=float)
+        for filtro in range(len(filtros_unicos)):
+            master_flats = np.zeros((filtros_count[filtro], naxis1_expected, naxis2_expected), dtype=float)
+            mostrarresultados(['N', 'Crpix2', 'Crpix1', 'A', 'B'],
+                              [len(indice_seccion_[indice_seccion_ == seccion]), crpix2, crpix1,
+                               naxis1_expected, naxis2_expected],
+                              titulo='Filtro ' + str(filtros_count[filtro]))
+            indice0 = 0
+            slicing_push = False
+            for imagen in range(len(lista_coincide)):
+                if indice_seccion_[imagen] == seccion:
+                    if indice_filtro[imagen] == filtro:
+                        image_file = dir_datos_ + noche + '/' + lista_flats_[imagen]
+                        image_data = fits.getdata(image_file, ext=0)
+                        if image_data[:, :].shape == master_flats[indice0, :, :].shape:
+                            master_flats[indice0, :, :] = image_data[:, :]                     # Juntar
+                            if indice0 == 0:
+                                cabecera = fits.open(image_file)[0].header
+                        else:
+                            size_mb = master_flats[indice0, :, :].shape
+                            size_da = image_data[:, :].shape
+                            if recortar:
+                                if not slicing_push:
+                                    warnings.warn("Sizes Incompatible!")
+                                    print("Sizes incompatible:")
+                                    print("Data size: " + str(size_da))
+                                    print("Master Bias size: " + str(size_mb) + "\n")
+                                    slicing_push = (input("Slicing fits. "
+                                                          "Select side towards to push (SW), SE, NE, NW: ") or "SW")
+                                s1, s2, s3, s4 = slicing_data(slicing_push, size_da, size_mb)
+                                master_flats[indice0, :, :] = image_data[s1:s2, s3:s4]
+                            else:
+                                warnings.warn("Sizes Incompatible!")
+                                print("Sizes incompatible:")
+                                print("Data size: " + str(size_da))
+                                print("Master Bias size: " + str(size_mb) + "\n")
+                                print("Skipping current Master Bias.")
+                                print("Consider using slicing with '--recortar'. ")
+                                input("Press Enter to continue...")
+                                break
+                        indice0 += 1
 
-        # Colapsamos
-        master_flats_colapsado = np.median(master_flats, axis=0)
-        plt.imshow(master_flats_colapsado)
-        # ImP.imgdibujar(master_flats_colapsado, verbose_=1)
+            # Restamos Bias
+            bias_asociado_nombre = dir_bias_ + noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}.fits".format(x1, x2, y1, y2)
+            bias_asociado = fits.getdata(bias_asociado_nombre, ext=0)
+            for i in range(master_flats.shape[0]):
+                master_flats[i, :, :] = master_flats[i, :, :] - bias_asociado
 
-        nombre_archivo = noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}.fits".format(x1, x2, y1, y2)
-        masterflats_header = cabecera.copy()
-        if masterflats_header['BLANK']:
-            del masterflats_header['BLANK']
+            # Normalizamos
+            valor_medio = np.zeros(master_flats.shape[0], dtype=float)
+            for i in range(master_flats.shape[0]):
+                valor_medio[i] = np.mean(master_flats[i, :, :], dtype=float)
+                master_flats[i, :, :] = np.true_divide(master_flats[i, :, :], valor_medio[i])
 
-        masterflats_final = fits.PrimaryHDU(master_flats_colapsado.astype(np.float), masterflats_header)
+            valor_medio2 = np.zeros(master_flats.shape[0], dtype=float)
+            for i in range(master_flats.shape[0]):
+                valor_medio2[i] = np.mean(master_flats[i, :, :], dtype=float)
 
-        masterflats_final.writeto(dir_flats_ + nombre_archivo, overwrite=True)
-
-        if verbose >= 1:
-            coord_lim = ImP.limites_imagen(*coordenadas_dibujo)
-            ImP.imgdibujar(master_flats_colapsado, *coordenadas_dibujo, *coord_lim, verbose_=1)
-
-        if interactive:
+            # Colapsamos
+            master_flats_colapsado = np.median(master_flats, axis=0)
+            # plt.imshow(master_flats_colapsado)
             # plt.show()
-            input("Press Enter to continue...")
+            # ImP.imgdibujar(master_flats_colapsado, verbose_=1)
+
+            nombre_archivo = noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-F{4:02d}.fits".format(x1, x2, y1, y2,
+                                                                                             numero_filtro[filtro])
+            masterflats_header = cabecera.copy()
+            if masterflats_header['BLANK']:
+                del masterflats_header['BLANK']
+
+            masterflats_final = fits.PrimaryHDU(master_flats_colapsado.astype(np.float), masterflats_header)
+
+            masterflats_final.writeto(dir_flats_ + nombre_archivo, overwrite=True)
+
+            if verbose >= 1:
+                coord_lim = ImP.limites_imagen(*coordenadas_dibujo)
+                ImP.imgdibujar(master_flats_colapsado, *coordenadas_dibujo, *coord_lim, verbose_=1)
+
+            if interactive:
+                # plt.show()
+                input("Press Enter to continue...")
 
 
 def crear_lista_unicos(dir_datos, noche, lista_cosas, cabecera='INSFLID', binning=False):
@@ -229,10 +247,6 @@ def realizar_master_flats(lista_noches, dir_listas, dir_datos, dir_bias, dir_fla
             dir_datos, noche, lista_flats, cabecera='CCDSEC', binning=True
         )
 
-        filtros, filtros_unicos, filtros_count, indice_filtro, _ = crear_lista_unicos(
-            dir_datos, noche, lista_flats, cabecera='INSFLID', binning=False
-        )
-
         # Variables:
         # secciones_unicas: lista de STR con las diferentes configuraciones de CCD que se usan
         # secciones_count: cuantas veces aparecen estas configuraciones
@@ -246,15 +260,8 @@ def realizar_master_flats(lista_noches, dir_listas, dir_datos, dir_bias, dir_fla
             coordenadas_unicas = sacar_coordenadas_ccd(secciones_unicas[i])
             coordenadas_secciones[i, :] = [*coordenadas_unicas]
 
-        numero_filtro = np.zeros(len(lista_flats), dtype=int)
-        for i in range(len(lista_flats)):
-            numero_filtro[i] = int(filtros_unicos[indice_filtro[i]][-2:])
-        print(numero_filtro)
-        print(indice_seccion)
-        print(filtros_unicos, filtros_count)
-
         juntar_imagenes(noche, secciones_unicas, coordenadas_secciones, secciones_count, indice_seccion, bin_secciones,
-                        dir_bias, dir_datos, dir_flats, lista_flats, numero_filtro, filtros_unicos, filtros_count,
+                        dir_bias, dir_datos, dir_flats, lista_flats,
                         verbose=verbose, interactive=interactive, recortar=recortar)
 
 
