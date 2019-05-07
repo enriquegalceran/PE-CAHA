@@ -23,6 +23,14 @@ def guardar_listas_csv(csvfile, res):
             writer.writerow([val])
 
 
+def conseguir_listas_archivos(path_):
+    listaarchivos = []
+    for file in os.listdir(path_):
+        if file.endswith(".fits"):
+            listaarchivos.append(os.path.join(path_, file))
+    return listaarchivos
+
+
 #####################################################################
 # Separar los Bias por tamaños. Primero definimos una función que devuelva las coordenadas
 def sacar_coordenadas_ccd(imagen_, mypath_=False):
@@ -97,8 +105,47 @@ def slicing_data(slicing_push, size_da, size_mb):
     return s1, s2, s3, s4
 
 
+def obtener_bias(dir_bias_, noche, lista_noches, lista_bias, observador, x1, x2, y1, y2):
+
+    bias_asociado_nombre = dir_bias_ + noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}.fits".format(x1, x2, y1, y2)
+    if bias_asociado_nombre in lista_bias:
+        bias_asociado = fits.getdata(bias_asociado_nombre, ext=0)
+    else:
+        exitos = []
+        observadores = []
+        posicion = lista_noches.index(noche)
+        busqueda_max = 5  # Cantidad maxima de dias a mirar a izquiera y derecha
+        for i in range(1, busqueda_max):
+            for mult in [-1, 1]:
+                indice = i * mult
+                noche = lista_noches[posicion + indice]
+                bias_asociado_nuevo = dir_bias_ + noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}.fits".format(x1, x2, y1, y2)
+                if bias_asociado_nuevo in lista_bias:
+                    exitos.append(indice)
+                    observadores.append(fits.open(bias_asociado_nuevo)[0].header['OBSERVER'])
+
+        # Ahora tenemos una lista con posibles candidatos
+        if all([exitos, observadores]):
+            for j in range(len(observadores)):
+                if observadores[j] == observador:
+                    indice_bias = exitos[j]
+                    break
+
+            # Si no ha enccontrado nada, cogemos el primero
+            if not indice_bias:
+                indice_bias = exitos[0]
+        else:
+            print('No hay biases cerca')
+            input('Enter para continuar...')
+
+    observador = fits.open(bias_asociado_nombre)[0].header['OBSERVER']
+
+    return bias_asociado
+# OBSERVER
+
+
 def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_count_, indice_seccion_,
-                    bin_secciones_, dir_bias_, dir_datos_, dir_flats_, lista_flats_,
+                    bin_secciones_, dir_bias_, dir_datos_, dir_flats_, lista_flats_, lista_noches, lista_bias,
                     verbose=0, interactive=False, recortar=False):
 
     for seccion in range(len(secciones_unicas_)):
@@ -173,6 +220,11 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
                         indice0 += 1
 
             # Restamos Bias
+            # Aqui es donde hay que meter la función que busca cual es el bias que va a usar, porque hay que tener
+            # cuidado con que exista ese bias. Si no hay ninguno de la misma noche, buscara en los dias de alrededor
+            # para las imagenes que ha tomado el mismo investigador. Si no estan esos disponibles, buscara de otro
+            observador = cabecera['OBSERVER']
+            obtener_bias(dir_bias_, noche, lista_noches, lista_bias, observador, x1, x2, y1, y2)
             bias_asociado_nombre = dir_bias_ + noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}.fits".format(x1, x2, y1, y2)
             bias_asociado = fits.getdata(bias_asociado_nombre, ext=0)
             for i in range(master_flats.shape[0]):
@@ -192,7 +244,7 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
             master_flats_colapsado = np.median(master_flats, axis=0)
             # plt.imshow(master_flats_colapsado)
             # plt.show()
-            ImP.imgdibujar(master_flats_colapsado)
+            # ImP.imgdibujar(master_flats_colapsado)
 
             nombre_archivo = noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-F{4:02d}.fits".format(x1, x2, y1, y2,
                                                                                              numero_filtro[filtro])
@@ -234,7 +286,8 @@ def crear_lista_unicos(dir_datos, noche, lista_cosas, cabecera='INSFLID', binnin
     return lista, lista_unicas, lista_count, indice_cosas, bin_secciones
 
 
-def realizar_master_flats(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats, verbose, interactive, recortar):
+def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_bias, dir_flats,
+                          verbose, interactive, recortar):
     i_noche = 0
     for noche in lista_noches:
         i_noche += 1
@@ -261,7 +314,7 @@ def realizar_master_flats(lista_noches, dir_listas, dir_datos, dir_bias, dir_fla
             coordenadas_secciones[i, :] = [*coordenadas_unicas]
 
         juntar_imagenes(noche, secciones_unicas, coordenadas_secciones, secciones_count, indice_seccion, bin_secciones,
-                        dir_bias, dir_datos, dir_flats, lista_flats,
+                        dir_bias, dir_datos, dir_flats, lista_flats, lista_noches, lista_bias,
                         verbose=verbose, interactive=interactive, recortar=recortar)
 
 
@@ -289,7 +342,8 @@ def main():
     lista_noches = os.listdir(args.dir_datos)
     tiempo_inicio_listas = time.time()
 
-    realizar_master_flats(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias, args.dir_flats,
+    lista_bias = conseguir_listas_archivos(args.dir_bias)
+    realizar_master_flats(lista_noches, lista_bias, args.dir_listas, args.dir_datos, args.dir_bias, args.dir_flats,
                           args.verbose, args.interactive, args.recortar)
     tiempo_final = time.time()
 
