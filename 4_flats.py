@@ -108,7 +108,11 @@ def slicing_data(slicing_push, size_da, size_mb):
 def obtener_bias(dir_bias_, noche, lista_noches, lista_bias, observador, x1, x2, y1, y2):
 
     bias_asociado_nombre = dir_bias_ + noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}.fits".format(x1, x2, y1, y2)
+    otro_observador = False
+    hace_falta_cambio = True
+    indice_bias = None
     if bias_asociado_nombre in lista_bias:
+        hace_falta_cambio = False
         bias_asociado = fits.getdata(bias_asociado_nombre, ext=0)
     else:
         exitos = []
@@ -134,14 +138,22 @@ def obtener_bias(dir_bias_, noche, lista_noches, lista_bias, observador, x1, x2,
             # Si no ha enccontrado nada, cogemos el primero
             if not indice_bias:
                 indice_bias = exitos[0]
+                otro_observador = True
         else:
             print('No hay biases cerca')
             input('Enter para continuar...')
+        if indice_bias:
+            noche = lista_noches[indice_bias]
+            bias_asociado_n = dir_bias_ + noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}.fits".format(x1, x2, y1, y2)
+            bias_asociado = fits.getdata(bias_asociado_n, ext=0)
 
-    observador = fits.open(bias_asociado_nombre)[0].header['OBSERVER']
+    if hace_falta_cambio:
+        print(exitos)
+        print(observadores)
+    else:
+        print('exite y sin problemas')
 
-    return bias_asociado
-# OBSERVER
+    return bias_asociado, noche, otro_observador
 
 
 def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_count_, indice_seccion_,
@@ -153,24 +165,26 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
         coordenadas_dibujo = sacar_coordenadas_2(coordenadas_secciones_, seccion)
         x1, x2, y1, y2 = deshacer_tupla_coord(coordenadas_dibujo)
 
-        # Sacar el Binning
-        crpix1 = bin_secciones_[seccion, 1]
-        crpix2 = bin_secciones_[seccion, 0]
-
-        naxis1_expected = int((coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) / crpix1)
-        naxis2_expected = int((coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) / crpix2)
-        if (coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) % crpix1 != 0:
-            naxis1_expected += 1
-        if (coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) % crpix2 != 0:
-            naxis2_expected += 1
-
+        # Creamos una lista con todos aquellos que coinciden el indice
         lista_coincide = []
         for imagen in range(len(lista_flats_)):
             if indice_seccion_[imagen] == seccion:
                 lista_coincide.append(lista_flats_[imagen])
 
-        filtros, filtros_unicos, filtros_count, indice_filtro, _ = crear_lista_unicos(dir_datos_, noche, lista_coincide,
-                                                                                      cabecera='INSFLID', binning=False)
+        filtros, filtros_unicos, filtros_count, indice_filtro, binning_filtro = crear_lista_unicos(dir_datos_, noche,
+                                                                                                   lista_coincide,
+                                                                                                   cabecera='INSFLID',
+                                                                                                   binning=True)
+        binning2 = []
+        binning1 = []
+        # Conseguir Binning
+        for x in range(len(lista_coincide)):
+            binning2.append(int(fits.open(dir_datos_ + noche + '/' + lista_coincide[x])[0].header['crpix2']))
+            binning1.append(int(fits.open(dir_datos_ + noche + '/' + lista_coincide[x])[0].header['crpix1']))
+        bin2_unique, bin2_count = np.unique(binning2, return_counts=True)
+        bin1_unique, bin1_count = np.unique(binning1, return_counts=True)
+        print(binning2)
+        print(binning1)
 
         numero_filtro = np.zeros(len(filtros_unicos), dtype=int)
         p = 0
@@ -179,17 +193,61 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
             p += 1
 
         for filtro in range(len(filtros_unicos)):
+            da_problemas = False
+            # Sacar el Binning
+            print(binning_filtro)
+
+            crpix2 = int(fits.open(dir_datos_ + noche + '/' + lista_coincide[0])[0].header['crpix2'])
+            crpix1 = int(fits.open(dir_datos_ + noche + '/' + lista_coincide[0])[0].header['crpix1'])
+            # crpix1 = binning_filtro[filtro, 1]
+            # crpix2 = binning_filtro[filtro, 0]
+
+            naxis1_expected = int((coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) / crpix1)
+            naxis2_expected = int((coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) / crpix2)
+            if (coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) % crpix1 != 0:
+                naxis1_expected += 1
+            if (coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) % crpix2 != 0:
+                naxis2_expected += 1
+
             master_flats = np.zeros((filtros_count[filtro], naxis1_expected, naxis2_expected), dtype=float)
+
+            for i in lista_coincide:
+                if i in lista_flats_:
+                    print(True)
+
             mostrarresultados(['N', 'Crpix2', 'Crpix1', 'A', 'B'],
                               [len(indice_seccion_[indice_seccion_ == seccion]), crpix2, crpix1,
                                naxis1_expected, naxis2_expected],
                               titulo='Filtro ' + str(filtros_count[filtro]))
             indice0 = 0
             slicing_push = False
+            print(len(lista_coincide))
+            print(seccion)
+            print(indice_seccion_)
+            print(filtro)
+            print(indice_filtro)
             for imagen in range(len(lista_coincide)):
-                if indice_seccion_[imagen] == seccion:
+                image_file = dir_datos_ + noche + '/' + lista_coincide[imagen]
+                image_data = fits.getdata(image_file, ext=0)
+                bin_prueba2 = int(fits.open(dir_datos_ + noche + '/' + lista_coincide[imagen])[0].header['crpix2'])
+                bin_prueba1 = int(fits.open(dir_datos_ + noche + '/' + lista_coincide[imagen])[0].header['crpix1'])
+
+
+
+                print(imagen, lista_coincide[imagen], lista_coincide.index(lista_coincide[imagen]), '|',
+                      indice_seccion_[lista_flats_.index(lista_coincide[imagen])], indice_filtro[imagen],
+                      indice_seccion_[lista_flats_.index(lista_coincide[imagen])] == seccion,
+                      indice_filtro[imagen] == filtro, '|', seccion, filtro, '|', image_data.shape,
+                      (crpix1, crpix2), (bin_prueba1, bin_prueba2), '|',
+                      bin1_count, bin1_unique, bin2_count, bin2_unique, '|', len(lista_coincide),
+                      int(fits.open(dir_datos_ + noche + '/' + lista_coincide[0])[0].header['crpix2']),
+                      int(fits.open(dir_datos_ + noche + '/' + lista_coincide[0])[0].header['crpix1']))
+
+
+
+                if indice_seccion_[lista_flats_.index(lista_coincide[imagen])] == seccion:
                     if indice_filtro[imagen] == filtro:
-                        image_file = dir_datos_ + noche + '/' + lista_flats_[imagen]
+                        image_file = dir_datos_ + noche + '/' + lista_coincide[imagen]
                         image_data = fits.getdata(image_file, ext=0)
                         if image_data[:, :].shape == master_flats[indice0, :, :].shape:
                             master_flats[indice0, :, :] = image_data[:, :]                     # Juntar
@@ -198,10 +256,13 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
                         else:
                             size_mb = master_flats[indice0, :, :].shape
                             size_da = image_data[:, :].shape
+                            da_problemas = True
                             if recortar:
                                 if not slicing_push:
                                     warnings.warn("Sizes Incompatible!")
                                     print("Sizes incompatible:")
+                                    print(image_file)
+                                    print(image_file in lista_coincide, image_file in lista_flats_)
                                     print("Data size: " + str(size_da))
                                     print("Master Bias size: " + str(size_mb) + "\n")
                                     slicing_push = (input("Slicing fits. "
@@ -223,49 +284,55 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
             # Aqui es donde hay que meter la función que busca cual es el bias que va a usar, porque hay que tener
             # cuidado con que exista ese bias. Si no hay ninguno de la misma noche, buscara en los dias de alrededor
             # para las imagenes que ha tomado el mismo investigador. Si no estan esos disponibles, buscara de otro
-            observador = cabecera['OBSERVER']
-            obtener_bias(dir_bias_, noche, lista_noches, lista_bias, observador, x1, x2, y1, y2)
-            bias_asociado_nombre = dir_bias_ + noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}.fits".format(x1, x2, y1, y2)
-            bias_asociado = fits.getdata(bias_asociado_nombre, ext=0)
-            for i in range(master_flats.shape[0]):
-                master_flats[i, :, :] = master_flats[i, :, :] - bias_asociado
+            if not da_problemas:
+                observador = cabecera['OBSERVER']
+                bias_asociado, noche_usada, otro_observador = obtener_bias(dir_bias_, noche, lista_noches,
+                                                                           lista_bias, observador, x1, x2, y1, y2)
+                if noche_usada != noche:
+                    print('Se ha usado una noche diferente: ', noche_usada)
+                if otro_observador:
+                    print('La imagen es de otro observador')
+                input('Enter para continuar...')
 
-            # Normalizamos
-            valor_medio = np.zeros(master_flats.shape[0], dtype=float)
-            for i in range(master_flats.shape[0]):
-                valor_medio[i] = np.mean(master_flats[i, :, :], dtype=float)
-                master_flats[i, :, :] = np.true_divide(master_flats[i, :, :], valor_medio[i])
+                for i in range(master_flats.shape[0]):
+                    master_flats[i, :, :] = master_flats[i, :, :] - bias_asociado
 
-            valor_medio2 = np.zeros(master_flats.shape[0], dtype=float)
-            for i in range(master_flats.shape[0]):
-                valor_medio2[i] = np.mean(master_flats[i, :, :], dtype=float)
+                # Normalizamos
+                valor_medio = np.zeros(master_flats.shape[0], dtype=float)
+                for i in range(master_flats.shape[0]):
+                    valor_medio[i] = np.mean(master_flats[i, :, :], dtype=float)
+                    master_flats[i, :, :] = np.true_divide(master_flats[i, :, :], valor_medio[i])
 
-            # Colapsamos
-            master_flats_colapsado = np.median(master_flats, axis=0)
-            # plt.imshow(master_flats_colapsado)
-            # plt.show()
-            # ImP.imgdibujar(master_flats_colapsado)
+                valor_medio2 = np.zeros(master_flats.shape[0], dtype=float)
+                for i in range(master_flats.shape[0]):
+                    valor_medio2[i] = np.mean(master_flats[i, :, :], dtype=float)
 
-            nombre_archivo = noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-F{4:02d}.fits".format(x1, x2, y1, y2,
-                                                                                             numero_filtro[filtro])
-            masterflats_header = cabecera.copy()
-            if masterflats_header['BLANK']:
-                del masterflats_header['BLANK']
+                # Colapsamos
+                master_flats_colapsado = np.median(master_flats, axis=0)
+                # plt.imshow(master_flats_colapsado)
+                # plt.show()
+                # ImP.imgdibujar(master_flats_colapsado)
 
-            masterflats_final = fits.PrimaryHDU(master_flats_colapsado.astype(np.float), masterflats_header)
+                nombre_archivo = noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-F{4:02d}.fits".format(x1, x2, y1, y2,
+                                                                                                 numero_filtro[filtro])
+                masterflats_header = cabecera.copy()
+                if masterflats_header['BLANK']:
+                    del masterflats_header['BLANK']
 
-            masterflats_final.writeto(dir_flats_ + nombre_archivo, overwrite=True)
+                masterflats_final = fits.PrimaryHDU(master_flats_colapsado.astype(np.float), masterflats_header)
 
-            if verbose >= 1:
-                coord_lim = ImP.limites_imagen(*coordenadas_dibujo)
-                ImP.imgdibujar(master_flats_colapsado, *coordenadas_dibujo, *coord_lim, verbose_=1)
+                # masterflats_final.writeto(dir_flats_ + nombre_archivo, overwrite=True)
+
+                if verbose >= 1:
+                    coord_lim = ImP.limites_imagen(*coordenadas_dibujo)
+                    ImP.imgdibujar(master_flats_colapsado, *coordenadas_dibujo, *coord_lim, verbose_=1)
 
             if interactive:
                 # plt.show()
                 input("Press Enter to continue...")
 
 
-def crear_lista_unicos(dir_datos, noche, lista_cosas, cabecera='INSFLID', binning=False):
+def crear_lista_unicos(dir_datos, noche, lista_cosas, cabecera, binning=False):
     lista = []
 
     for imagen in lista_cosas:
@@ -286,10 +353,11 @@ def crear_lista_unicos(dir_datos, noche, lista_cosas, cabecera='INSFLID', binnin
     return lista, lista_unicas, lista_count, indice_cosas, bin_secciones
 
 
+
 def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_bias, dir_flats,
                           verbose, interactive, recortar):
     i_noche = 0
-    for noche in lista_noches:
+    for noche in lista_noches[21:]:
         i_noche += 1
         print('=== NOCHE ' + noche + ' - (' + str(i_noche) + '/' + str(len(lista_noches)) + ') ===')
 
@@ -368,14 +436,7 @@ if __name__ == "__main__":
 # hdr = hdul[0].header
 
 # #print(hdr[0:5])
-# print(hdr['NAXIS'])
-# print(hdr['NAXIS1'])
-# print(hdr['NAXIS2'])
-# print(hdr['OBJECT'])
-# print(hdr['BIASSEC'])
-# print(hdr['DATASEC'])
 # print(hdr['CCDSEC'])
-# print('--...---...---')
 # # for imagen in lista_cal:
 # #     print(fits.open(mypath + imagen)[0].header['OBJECT'])
 
@@ -454,3 +515,14 @@ if __name__ == "__main__":
 
 # https://pyformat.info
 # "str{0:04d}".format(210)
+
+
+# usar numpy.ma.median para la mascara
+# Crear una mascara que calcule el radio con mask=x*x+y*y<=r*r
+# Dividir por median
+#
+# Anadir B{0:02d}-{1:02d}.format(binning1,binning2)
+# Hay que comprobar a ver si hay imagenes de ciencia con multiples binning tambien o no
+#
+# Crear un diccionario de filtros que se van a usar para el nombre. Siempre se usaran los mimso numeros para el mismo
+# filtro aunque sean diferentes noches o imagenes. Ese diccionario se ampliara a lo largo del tiempo
