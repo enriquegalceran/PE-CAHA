@@ -89,8 +89,8 @@ def imgdibujar(image2d, x1=None, x2=None, y1=None, y2=None,
                background=None, foreground=None, verbose_=0):
 
     if not x1 and not x2 and not y1 and not y2 and not xmin and not xmax and not ymin and not ymax:
-        x1 = 0
-        y1 = 0
+        x1 = 1
+        y1 = 1
         x2 = image2d.shape[1]
         y2 = image2d.shape[0]
         limites = limites_imagen(x1, x2, y1, y2)
@@ -102,6 +102,8 @@ def imgdibujar(image2d, x1=None, x2=None, y1=None, y2=None,
         foreground = np.percentile(image2d, 90)
 
     if verbose_ == 1:
+        print(image2d[(y1 - 1):y2, (x1 - 1):x2])
+        print(image2d[(y1 - 1):y2, (x1 - 1):x2].shape)
         mostrarresultados(['x1', 'x2', 'y1', 'y2', -1,
                            'xmin', 'xmax', 'ymin', 'ymax', -1,
                            'background', 'foreground', -1,

@@ -192,7 +192,7 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
             master_flats_colapsado = np.median(master_flats, axis=0)
             # plt.imshow(master_flats_colapsado)
             # plt.show()
-            # ImP.imgdibujar(master_flats_colapsado, verbose_=1)
+            ImP.imgdibujar(master_flats_colapsado)
 
             nombre_archivo = noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-F{4:02d}.fits".format(x1, x2, y1, y2,
                                                                                              numero_filtro[filtro])
