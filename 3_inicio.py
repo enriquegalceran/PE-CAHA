@@ -331,10 +331,7 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
         master_biases = np.zeros((secciones_count_[seccion],
                                   naxis1_expected,
                                   naxis2_expected), dtype=float)
-        mostrarresultados(['N', 'Crpix2', 'Crpix1', 'A', 'B'],
-                          [len(indice_seccion_[indice_seccion_ == seccion]), crpix2, crpix1,
-                           naxis1_expected, naxis2_expected],
-                          titulo='Bias Realizado')
+
         indice0 = 0
         slicing_push = False
         for imagen in range(len(lista_bias_)):
@@ -375,7 +372,14 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
         # print(master_bias_colapsado)
         # plt.imshow(master_bias_colapsado)
         # ImP.imgdibujar(master_bias_colapsado, verbose_=1)
-        nombre_archivo = noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}.fits".format(x1, x2, y1, y2)
+        nombre_archivo = noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}.fits".format(x1, x2, y1, y2,
+                                                                                                 crpix1, crpix2)
+
+        mostrarresultados(['N', 'Crpix2', 'Crpix1', 'A', 'B', '-1'],
+                          [len(indice_seccion_[indice_seccion_ == seccion]), crpix2, crpix1,
+                           naxis1_expected, naxis2_expected, nombre_archivo],
+                          titulo='Bias Realizado')
+
         masterbias_header = cabecera.copy()
         # if masterbias_header['BLANK']:
         #     del masterbias_header['BLANK']

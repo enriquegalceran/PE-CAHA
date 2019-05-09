@@ -39,7 +39,8 @@ def mostrarresultados(nombres, valores, contador=None, valor_max=None, titulo='R
             if len(contador) % 2 == 1:
                 contador = '0' + contador
     for i in range(len(nombres)):
-        tamanyo.append(len(str(nombres[i]))+len(str(valores[i])))
+        if str(nombres[i]) != '-1':
+            tamanyo.append(len(str(nombres[i]))+len(str(valores[i])))
 
     if contador:
         if valor_max:
@@ -48,6 +49,15 @@ def mostrarresultados(nombres, valores, contador=None, valor_max=None, titulo='R
             tamanyom = max(max(tamanyo) + 5, len(titulo) + 8, len(contador) + 6, 24)
     else:
         tamanyom = max(max(tamanyo) + 5, len(titulo) + 8, 24)
+
+    if '-1' in nombres:
+        for i in range(len(nombres)):
+            if str(nombres[i]) == '-1':
+                if not str(valores[i]) == '-1':
+                    tamanyo.append(len(valores[i]))
+
+        if not tamanyom == max(tamanyo):
+            tamanyom = max(tamanyo)
 
     if len(titulo) % 2 != tamanyom % 2:
         tamanyom += 1
@@ -66,10 +76,13 @@ def mostrarresultados(nombres, valores, contador=None, valor_max=None, titulo='R
 
     print(titulo)
     for nombre_, tamanyo_, valor_ in zip(nombres, tamanyo, valores):
-        if str(nombre_) != '-1' and str(valor_) != '-1':
-            print(nombre_ + ': ' + rellenar(relleno, tamanyom - tamanyo_ - 3) + ' ' + str(valor_))
-        else:
+        if all([str(nombre_) == '-1', str(valor_) == '-1']):
             print(rellenar(separador, tamanyom))
+
+        elif all([str(nombre_) == '-1', str(valor_) != '-1']):
+            print(str(valor_))
+        else:
+            print(nombre_ + ': ' + rellenar(relleno, tamanyom - tamanyo_ - 3) + ' ' + str(valor_))
     print(cierre)
 
 
