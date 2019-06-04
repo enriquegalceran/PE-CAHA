@@ -170,6 +170,20 @@ def obtener_bias(dir_bias_, noche, lista_noches, lista_bias, observador, x1, x2,
     return bias_asociado, noche, otro_observador
 
 
+def create_circular_mask(h, w, center=None, radius=None):
+
+    if center is None: # use the middle of the image
+        center = [int(w/2), int(h/2)]
+    if radius is None: # use the smallest distance between the center and image walls
+        radius = min(center[0], center[1], w-center[0], h-center[1])
+
+    Y, X = np.ogrid[:h, :w]
+    dist_from_center = np.sqrt((X - center[0])**2 + (Y-center[1])**2)
+
+    mask = dist_from_center <= radius
+    return mask
+
+
 def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_count_, indice_seccion_,
                     bin_secciones_, dir_bias_, dir_datos_, dir_flats_, lista_flats_, lista_noches, lista_bias,
                     verbose=0, interactive=False, recortar=False):
@@ -189,6 +203,15 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
                                                                                       lista_coincide,
                                                                                       cabecera='INSFLID',
                                                                                       binning=False)
+
+        numero_grisma = fits.open(dir_datos_ + noche + '/' + lista_coincide[0])[0].header['insgrid']
+        numero_grisma = numero_grisma.replace(' ', '0')[6: 8]
+        if numero_grisma == 11:  # Si tiene_grisma==11, entonces no hay grisma de por medio
+            tiene_grisma = True
+        else:
+            tiene_grisma = False
+
+
 
         numero_filtro = np.zeros(len(filtros_unicos), dtype=int)
         p = 0
@@ -247,6 +270,12 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
 
                     master_flats = np.zeros((filtros_count[filtro], naxis1_expected, naxis2_expected), dtype=float)
 
+                    if tiene_grisma:
+                        center_real = [1075, 1040]
+                        center = [center_real[0] - x1, center_real[1] - y1]
+                        radius = 809  # con 810 tiene un pixel de borde
+                        mask = create_circular_mask(naxis1_expected, naxis2_expected, center=center, radius=radius)
+
                     mostrarresultados(['N', 'Crpix2', 'Crpix1', 'A', 'B'],
                                       [len(lista_actual_bin), crpix2, crpix1,
                                        naxis1_expected, naxis2_expected],
@@ -279,7 +308,7 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
                                 cabecera = fits.open(image_file)[0].header
                         else:
                             print('hay un problema con el tamanyo de las imagenes')
-                            input('Pausado')
+                            input('Pausado. Pulsa Enter para continuar...')
                         # else:
                         #     size_mb = master_flats[indice0, :, :].shape
                         #     size_da = image_data[:, :].shape
@@ -328,7 +357,15 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
                     # Normalizamos
                     valor_medio = np.zeros(master_flats.shape[0], dtype=float)
                     for i in range(master_flats.shape[0]):
-                        valor_medio[i] = np.mean(master_flats[i, :, :], dtype=float)
+
+                        # Si tiene grisma, usamos una máscara para calcular la mediana
+                        if not tiene_grisma:
+                            valor_medio[i] = np.median(master_flats[i, :, :])
+                        else:
+                            x = ma.masked_array(master_flats[i,:,:], ~mask)
+                            valor_medio[i ] = ma.median(x)
+
+                        #Después ya dividimos
                         master_flats[i, :, :] = np.true_divide(master_flats[i, :, :], valor_medio[i])
 
                     valor_medio2 = np.zeros(master_flats.shape[0], dtype=float)
