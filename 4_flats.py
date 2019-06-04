@@ -10,7 +10,7 @@ from numpy import genfromtxt
 import argparse
 import time
 import warnings
-
+import json
 
 def deshacer_tupla_coord(tupla):
     return tupla[0], tupla[1], tupla[2], tupla[3]
@@ -23,12 +23,42 @@ def guardar_listas_csv(csvfile, res):
             writer.writerow([val])
 
 
+def mostrar_diccionario(nombre_diccionario):
+    print("Mostramos el diccionario: ")
+    for x, y in nombre_diccionario.items():
+      print(x, y)
+
+
+def guardar_json(variable, filename):
+    json_f = json.dumps(variable)
+    f = open(filename,"w")
+    f.write(json_f)
+    f.close()
+
+
+def cargar_json(filename='Dic_filtro.json'):
+    with open(filename) as json_file:
+        data = json.load(json_file)
+    return data
+
+
 def conseguir_listas_archivos(path_):
     listaarchivos = []
     for file in os.listdir(path_):
         if file.endswith(".fits"):
             listaarchivos.append(os.path.join(path_, file))
     return listaarchivos
+
+
+def leer_diccionario(nombre, diccionario_, filename='Dic_filtro.json'):
+    if nombre in diccionario_:
+        return diccionario_[nombre]
+    else:
+        len_dic = len(diccionario_)
+        diccionario_[nombre] = len_dic
+        print('Nueva entrada en el diccionario: ', diccionario_[nombre])
+        guardar_json(diccionario_, filename)
+        return diccionario_[nombre]
 
 
 #####################################################################
@@ -188,6 +218,9 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
                     bin_secciones_, dir_bias_, dir_datos_, dir_flats_, lista_flats_, lista_noches, lista_bias,
                     verbose=0, interactive=False, recortar=False):
 
+    # Cargamos Diccionario de Filtros
+    Dic_filtro = cargar_json()
+
     for seccion in range(len(secciones_unicas_)):
         print('seccion: ' + str(seccion))
         coordenadas_dibujo = sacar_coordenadas_2(coordenadas_secciones_, seccion)
@@ -199,10 +232,33 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
             if indice_seccion_[imagen] == seccion:
                 lista_coincide.append(lista_flats_[imagen])
 
-        filtros, filtros_unicos, filtros_count, indice_filtro, _ = crear_lista_unicos(dir_datos_, noche,
+        filtros, filtros_unicos, filtros_count, indice_filtro, _, nombres_filtros = crear_lista_unicos(
+                                                                                      dir_datos_, noche,
                                                                                       lista_coincide,
-                                                                                      cabecera='INSFLID',
-                                                                                      binning=False)
+                                                                                      cabecera='INSFLID', #
+                                                                                      binning=False, nombre_filtro=True
+                                                                                      )
+        print(nombres_filtros)
+        print(filtros)
+        print(filtros_unicos)
+        #Creamos nombres_unicos
+        nombres_unicos = []
+        for i in range(len(filtros_unicos)):
+            for j in range(len(filtros)):
+                if filtros_unicos[i] == filtros[j]:
+                    nombres_unicos.append(nombres_filtros[j])
+                    break
+        print(nombres_unicos)
+        nombre_diccionario = []
+
+        for i in nombres_unicos:
+            nombre_diccionario.append(leer_diccionario(i, Dic_filtro))
+
+        print(nombre_diccionario)
+
+        # HAY QUE CONTINUAR AQUÍ, TENEMOS EL CÓDIGO QUE LEE Y CLASIFICA, AHORA TOCA QUE GUARDE CON EL NOMBRE
+
+        input('pausa')
 
         numero_grisma = fits.open(dir_datos_ + noche + '/' + lista_coincide[0])[0].header['insgrid']
         numero_grisma = numero_grisma.replace(' ', '0')[6: 8]
@@ -210,8 +266,6 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
             tiene_grisma = True
         else:
             tiene_grisma = False
-
-
 
         numero_filtro = np.zeros(len(filtros_unicos), dtype=int)
         p = 0
@@ -293,14 +347,14 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
                         bin_prueba2 = int(fits.open(image_file)[0].header['crpix2'])
                         bin_prueba1 = int(fits.open(image_file)[0].header['crpix1'])
 
-                        print(imagen, lista_actual_bin[imagen], lista_actual_bin.index(lista_actual_bin[imagen]), '|',
-                              indice_seccion_[lista_flats_.index(lista_actual_bin[imagen])], indice_filtro[imagen],
-                              indice_seccion_[lista_flats_.index(lista_actual_bin[imagen])] == seccion,
-                              indice_filtro[imagen] == filtro, '|', seccion, filtro, '|', image_data.shape,
-                              (crpix1, crpix2), (bin_prueba1, bin_prueba2), '|',
-                              bin1_count, bin1_unique, bin2_count, bin2_unique, '|', len(lista_actual_bin),
-                              int(fits.open(dir_datos_ + noche + '/' + lista_actual_bin[imagen])[0].header['crpix2']),
-                              int(fits.open(dir_datos_ + noche + '/' + lista_actual_bin[imagen])[0].header['crpix1']))
+                        # print(imagen, lista_actual_bin[imagen], lista_actual_bin.index(lista_actual_bin[imagen]), '|',
+                        #       indice_seccion_[lista_flats_.index(lista_actual_bin[imagen])], indice_filtro[imagen],
+                        #       indice_seccion_[lista_flats_.index(lista_actual_bin[imagen])] == seccion,
+                        #       indice_filtro[imagen] == filtro, '|', seccion, filtro, '|', image_data.shape,
+                        #       (crpix1, crpix2), (bin_prueba1, bin_prueba2), '|',
+                        #       bin1_count, bin1_unique, bin2_count, bin2_unique, '|', len(lista_actual_bin),
+                        #       int(fits.open(dir_datos_ + noche + '/' + lista_actual_bin[imagen])[0].header['crpix2']),
+                        #       int(fits.open(dir_datos_ + noche + '/' + lista_actual_bin[imagen])[0].header['crpix1']))
 
                         if image_data[:, :].shape == master_flats[indice0, :, :].shape:
                             master_flats[indice0, :, :] = image_data[:, :]                  # Juntar
@@ -415,7 +469,7 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
                 input("Press Enter to continue...")
 
 
-def crear_lista_unicos(dir_datos, noche, lista_cosas, cabecera, binning=False):
+def crear_lista_unicos(dir_datos, noche, lista_cosas, cabecera, binning=False, nombre_filtro=False):
     lista = []
 
     for imagen in lista_cosas:
@@ -424,6 +478,8 @@ def crear_lista_unicos(dir_datos, noche, lista_cosas, cabecera, binning=False):
 
     bin_secciones = -1 * np.ones((len(lista_unicas), 2), dtype=int)
     indice_cosas = np.zeros(len(lista_cosas), dtype=int)
+    nombres_filtros = []
+
     for i in range(len(lista_cosas)):
         for j in range(len(lista_unicas)):
             if lista[i] == lista_unicas[j]:
@@ -431,9 +487,11 @@ def crear_lista_unicos(dir_datos, noche, lista_cosas, cabecera, binning=False):
                 if binning:
                     bin_secciones[j, 0] = int(fits.open(dir_datos + noche + '/' + lista_cosas[i])[0].header['crpix2'])
                     bin_secciones[j, 1] = int(fits.open(dir_datos + noche + '/' + lista_cosas[i])[0].header['crpix1'])
+                if nombre_filtro:
+                    nombres_filtros.append(fits.open(dir_datos + noche + '/' + lista_cosas[i])[0].header['INSFLNAM'])
                 break
 
-    return lista, lista_unicas, lista_count, indice_cosas, bin_secciones
+    return lista, lista_unicas, lista_count, indice_cosas, bin_secciones, nombres_filtros
 
 
 def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_bias, dir_flats,
@@ -446,7 +504,7 @@ def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_b
         lista_flats = leer_lista(dir_listas + noche + '/' + 'LFlat.csv')
         lista_flats = [item for sublist in lista_flats for item in sublist]  # Limpiamos la lista para poder usarla
 
-        secciones, secciones_unicas, secciones_count, indice_seccion, bin_secciones = crear_lista_unicos(
+        secciones, secciones_unicas, secciones_count, indice_seccion, bin_secciones, _ = crear_lista_unicos(
             dir_datos, noche, lista_flats, cabecera='CCDSEC', binning=True
         )
 
