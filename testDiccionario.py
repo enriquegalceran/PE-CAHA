@@ -11,12 +11,12 @@ def deshacer_tupla_coord(tupla):
     return tupla[0], tupla[1], tupla[2], tupla[3]
 
 
-thisdict =	{
-  "brand": (1, "Ford"),
-  "model": (2, "Mustang"),
-  "year": (3, 1964)
-}
-print(thisdict)
+# thisdict =	{
+#   "brand": (1, "Ford"),
+#   "model": (2, "Mustang"),
+#   "year": (3, 1964)
+# }
+# print(thisdict)
 
 
 # sacar keywords
@@ -31,14 +31,14 @@ print(thisdict)
 # for x in thisdict.values():
 #   print(x)
 
-# Loop de ambos
-# for x, y in thisdict.items():
-#   print(x, y)
-
-
-
 ##########################################################################
 # El objetivo es crear una base de datos (diccionario) con los nombres de los filtros
+
+def mostrar_diccionario(nombre_diccionario):
+    print("Mostramos el diccionario: ")
+    for x, y in nombre_diccionario.items():
+      print(x, y)
+
 
 def guardar_json(variable, filename):
     json_f = json.dumps(variable)
@@ -47,19 +47,37 @@ def guardar_json(variable, filename):
     f.close()
 
 
-def cargar_json(filename):
-    with open('dict.json') as json_file:
+def cargar_json(filename='Dic_filtro.json'):
+    with open(filename) as json_file:
         data = json.load(json_file)
     return data
 
 
-guardar_json(thisdict, 'dict.json')
-diccionario = cargar_json('dict.json')
-print(diccionario)
+Dic_filtro = cargar_json()
+# Dic_filtro = {
+#   "free": 0
+# }
 
-if 'model' not in diccionario:
-    print('no esta')
-else:
-    print('si esta')
+nombre = "CousinsR"
 
-print(diccionario["model"][0])
+
+def leer_diccionario(nombre, diccionario_=Dic_filtro, filename='Dic_filtro.json'):
+    if nombre in diccionario_:
+        return diccionario_[nombre]
+    else:
+        len_dic = len(diccionario_)
+        diccionario_[nombre] = len_dic
+        print('Nueva entrada en el diccionario: ', diccionario_[nombre])
+        guardar_json(diccionario_, filename)
+        return diccionario_[nombre]
+
+
+valor = leer_diccionario("CousinsR")
+print(valor)
+print(type(Dic_filtro)==dict)
+mostrar_diccionario(Dic_filtro)
+
+# prueba = str(Dic_filtro['free'])
+# print(prueba)
+# print(len(prueba))
+
