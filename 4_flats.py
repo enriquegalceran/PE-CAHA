@@ -432,9 +432,19 @@ def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_
                     # plt.show()
                     # ImP.imgdibujar(master_flats_colapsado)
 
-                    nombre_archivo = noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}-F{6:02d}.fits".format(x1, x2, y1, y2, crpix1, crpix2,
-                                                                                                     numero_filtro[filtro])
+                    print(numero_filtro[filtro])
+                    print(numero_filtro)
+                    print(nombre_diccionario)
+                    print(filtro)
 
+                    # si tiene numero_filtro[filtro] da la posicion del filtro
+                    # si pone nombre_diccionario[filtro] da el numero del diccionario del filtro
+                    nombre_archivo = noche +\
+                                     "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}-F{6:03d}.fits"\
+                                     .format(x1, x2, y1, y2, crpix1, crpix2, nombre_diccionario[filtro])
+
+                    print(nombre_archivo)
+                    input('pausa2')
                     masterflats_header = cabecera.copy()
                     if masterflats_header['BLANK']:
                         del masterflats_header['BLANK']
