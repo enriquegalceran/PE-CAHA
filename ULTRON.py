@@ -1,13 +1,19 @@
+
+"""
+    Proyecto de Unidad de Limpieza y Tratamiento de Resultados Observacionales Nativo (Proyecto U.L.T.R.O.N.)
+
+    Recoge los resultados de observaciones del instrumento CAFOS y los reduce correctamente.
+    Desarrollado por Enrique Galceran García
+"""
+
 from astropy.io import fits
 from Salida_limpia import mostrarresultados, stdrobusta
 import numpy as np
 import numpy.ma as ma
 import IMGPlot as ImP
-# import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import csv
-from numpy import genfromtxt
 import argparse
 import time
 import warnings
@@ -321,7 +327,7 @@ def comprobar(archivo, descriptor, descriptor2=None, descriptor3=None, verbose=F
     return coincide
 
 
-def listas_archivos2(path_, desc_bias, desc_flats, desc_arc, verbose=False):
+def listas_archivos2(path_, desc_bias, desc_flats, desc_arc, verbose=False, calysci=True):
     lista_cal = []
     lista_sci = []
     lista_misc = []
@@ -336,12 +342,13 @@ def listas_archivos2(path_, desc_bias, desc_flats, desc_arc, verbose=False):
     # Miramos todos los archivos dentro de la carpeta
     for file in os.listdir(path_):
         if file.endswith(".fits"):
-            if '-cal-' in file:
-                lista_cal.append(file)
-            elif '-sci-' in file:
-                lista_sci.append(file)
-            else:
-                lista_misc.append(file)
+            if calysci:
+                if '-cal-' in file:
+                    lista_cal.append(file)
+                elif '-sci-' in file:
+                    lista_sci.append(file)
+                else:
+                    lista_misc.append(file)
             listaarchivos.append(os.path.join(path_, file))
 
             # Separamos segun IMAGETYP
@@ -379,8 +386,10 @@ def listas_archivos2(path_, desc_bias, desc_flats, desc_arc, verbose=False):
                     lista_else.append(file)
 
     for file in lista_falla:
-        if file in lista_sci:
-            lista_ciencia.append(file)
+
+        if calysci:
+            if file in lista_sci:
+                lista_ciencia.append(file)
 
         probable = imagen_mas_probable(path_ + file)
 
@@ -402,7 +411,7 @@ def listas_archivos2(path_, desc_bias, desc_flats, desc_arc, verbose=False):
     return lista_bias, lista_flat, lista_arc, lista_ciencia, listaarchivos, lista_falla
 
 
-def crear_listas_cal_y_sci(lista_noches_, dir_listas_, dir_datos_, desc_bias, desc_flats, desc_arc, verbose):
+def crear_listas_cal_y_sci(lista_noches_, dir_listas_, dir_datos_, desc_bias, desc_flats, desc_arc, verbose, calysci):
     i = 0
     for noche in lista_noches_:
         i += 1
@@ -418,7 +427,8 @@ def crear_listas_cal_y_sci(lista_noches_, dir_listas_, dir_datos_, desc_bias, de
                                                                                      desc_bias,
                                                                                      desc_flats,
                                                                                      desc_arc,
-                                                                                     verbose)
+                                                                                     verbose,
+                                                                                     calysci)
 
             mostrarresultados(['Bias', 'Flat', 'Arc', 'Ciencia', 'Falla'],
                               [len(l_bias), len(l_flat), len(l_arc), len(l_ciencia), len(l_falla)],
@@ -870,78 +880,6 @@ def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_b
                               verbose=verbose, interactive=interactive)
 
 
-def main_bias():
-    # ---------------Valores por defecto-------------------------------------------
-    default_dir_datos = 'CAFOS2017/'
-    default_dir_bias = 'Biases/'
-    default_dir_listas = 'Listas/'
-    desc_bias = ['bias', 'Bias', 'BIAS']
-    desc_flats = ['flats', 'FLATS', 'FLAT', 'Flats', 'Flat', 'flat', 'Skyflat', 'SDkyflat']
-    desc_arc = ['arc', 'ARC']
-    # -----------------------------------------------------------------------------
-
-    parser = argparse.ArgumentParser(description="Bias and Flat calibration of CAFOS images")
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("-v", "--verbose", action="store_true")
-    group.add_argument("-q", "--quiet", action="store_true")
-    parser.add_argument("-db", "--dir_bias", default=default_dir_bias, type=str, help='Bias Directory')
-    parser.add_argument("-dd", "--dir_datos", default=default_dir_datos, type=str, help='Data Directory')
-    parser.add_argument("-dl", "--dir_listas", default=default_dir_listas, type=str, help='Lists Directory')
-    parser.add_argument('--cmap', type=str, help="Colormap", default='hot')
-    parser.add_argument("-i", "--interactive", action="store_true")
-    parser.add_argument("--recortar", action="store_true")
-    args = parser.parse_args()
-
-    lista_noches = os.listdir(args.dir_datos)
-    tiempo_inicio_listas = time.time()
-
-    crear_listas_cal_y_sci(lista_noches, args.dir_listas, args.dir_datos, desc_bias, desc_flats, desc_arc, args.verbose)
-    tiempo_medio = time.time()
-
-    realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
-                           args.verbose, args.interactive, args.recortar)
-    tiempo_final = time.time()
-
-    mostrarresultados(['Tiempo Listas', 'Tiempo Master Bias', 'Cuantos Biases'],
-                      [round(tiempo_medio-tiempo_inicio_listas, 2), round(tiempo_final - tiempo_medio, 2),
-                       len(os.listdir(args.dir_bias))],
-                      titulo='Tiempo Ejecucion')
-
-
-def main_flat():
-    # ---------------Valores por defecto-------------------------------------------
-    default_dir_datos = 'CAFOS2017/'
-    default_dir_bias = 'Biases/'
-    default_dir_listas = 'Listas/'
-    default_dir_flats = 'Flats/'
-    # -----------------------------------------------------------------------------
-
-    parser = argparse.ArgumentParser(description="Bias and Flat calibration of CAFOS images")
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("-v", "--verbose", action="store_true")
-    group.add_argument("-q", "--quiet", action="store_true")
-    parser.add_argument("-db", "--dir_bias", default=default_dir_bias, type=str, help='Bias Directory')
-    parser.add_argument("-df", "--dir_flats", default=default_dir_flats, type=str, help='Flats Directory')
-    parser.add_argument("-dd", "--dir_datos", default=default_dir_datos, type=str, help='Data Directory')
-    parser.add_argument("-dl", "--dir_listas", default=default_dir_listas, type=str, help='Lists Directory')
-    parser.add_argument('--cmap', type=str, help="Colormap", default='hot')
-    parser.add_argument("-i", "--interactive", action="store_true")
-    args = parser.parse_args()
-
-    lista_noches = os.listdir(args.dir_datos)
-    tiempo_inicio_listas = time.time()
-
-    lista_bias = conseguir_listas_archivos(args.dir_bias)
-    realizar_master_flats(lista_noches, lista_bias, args.dir_listas, args.dir_datos, args.dir_bias, args.dir_flats,
-                          args.verbose, args.interactive)
-    tiempo_final = time.time()
-
-    mostrarresultados(['Tiempo Master Bias', 'Cuantos Flats'],
-                      [round(tiempo_final - tiempo_inicio_listas, 2),
-                       len(os.listdir(args.dir_flats))],
-                      titulo='Tiempo Ejecucion')
-
-
 def main():
 
     # ---------------Valores por defecto-------------------------------------------
@@ -964,7 +902,14 @@ def main():
     parser.add_argument("-dl", "--dir_listas", default=default_dir_listas, type=str, help='Lists Directory')
     parser.add_argument('--cmap', type=str, help="Colormap", default='hot')
     parser.add_argument("-i", "--interactive", action="store_true")
-    parser.add_argument("--recortar", action="store_true")
+    parser.add_argument("--recortar", action="store_true", help="Activar el recorte de imagenes")
+    parser.add_argument("-b", "--bias", action="store_false",
+                        help="No realizar los Master Bias (Por Defecto se generan).")
+    parser.add_argument("-f", "--flat", action="store_false",
+                        help="No realizar los Master Flat (Por Defecto se generan).")
+    parser.add_argument("--calysci", action="store_false",
+                        help="Usar cuando los archivos no tienen '-cal-' y '-sci-'"
+                             + "en el nombre para diferenciar entre calibración y ciencia.")
     args = parser.parse_args()
 
     # Creamos una lista de las noches disponibles
@@ -972,7 +917,8 @@ def main():
     tiempo_inicio = time.time()
 
     # Separamos entre calibración y ciencia
-    crear_listas_cal_y_sci(lista_noches, args.dir_listas, args.dir_datos, desc_bias, desc_flats, desc_arc, args.verbose)
+    crear_listas_cal_y_sci(lista_noches, args.dir_listas, args.dir_datos, desc_bias, desc_flats, desc_arc,
+                           args.verbose, args.calysci)
     tiempo_listas = time.time()
 
     # Creamos los Master Biases
@@ -987,9 +933,10 @@ def main():
     tiempo_flats = time.time()
 
     # Mostramos resultados de ambos procesos
-    mostrarresultados(['Tiempo Listas', 'Tiempo Master Bias', 'Tiempo Master Flats', 'Cuantos Biases', 'Cuantos Flats'],
+    mostrarresultados(['Tiempo Listas', 'Tiempo Master Bias', 'Tiempo Master Flats', 'Tiempo Total',
+                       'Cuantos Biases', 'Cuantos Flats'],
                       [round(tiempo_listas - tiempo_inicio, 2), round(tiempo_biases - tiempo_listas, 2),
-                       round(tiempo_flats - tiempo_biases, 2),
+                       round(tiempo_flats - tiempo_biases, 2), round(tiempo_flats - tiempo_listas, 2),
                        len(os.listdir(args.dir_bias)), len(os.listdir(args.dir_flats))],
                       titulo='Tiempo Ejecucion')
 
