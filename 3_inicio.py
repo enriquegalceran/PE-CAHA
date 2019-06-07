@@ -310,8 +310,9 @@ def slicing_data(slicing_push, size_da, size_mb):
     return s1, s2, s3, s4
 
 
-def juntar_imagenes(noche, secciones_unicas_, coordenadas_secciones_, secciones_count_, indice_seccion_,
-                    bin_secciones_, dir_bias_, dir_datos_, lista_bias_, verbose=0, interactive=False, recortar=False):
+def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secciones_count_, indice_seccion_,
+                         bin_secciones_, dir_bias_, dir_datos_, lista_bias_, verbose=0,
+                         interactive=False, recortar=False):
     for seccion in range(len(secciones_unicas_)):
         print('seccion: ' + str(seccion))
         coordenadas_dibujo = sacar_coordenadas_2(coordenadas_secciones_, seccion)
@@ -426,8 +427,9 @@ def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbos
         # for k in range(len(secciones_unicas)):
         #     add_to_file('BiasSecciones.csv', secciones_unicas[k] + ';' + str(secciones_count[k]) + '\n')
 
-        juntar_imagenes(noche, secciones_unicas, coordenadas_secciones, secciones_count, indice_seccion, bin_secciones,
-                        dir_bias, dir_datos, lista_bias, verbose=verbose, interactive=interactive, recortar=recortar)
+        juntar_imagenes_bias(noche, secciones_unicas, coordenadas_secciones, secciones_count,
+                             indice_seccion, bin_secciones, dir_bias, dir_datos, lista_bias,
+                             verbose=verbose, interactive=interactive, recortar=recortar)
 
 
 def main():
