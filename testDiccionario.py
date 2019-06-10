@@ -54,9 +54,9 @@ def cargar_json(filename='Dic_filtro.json'):
 
 
 Dic_filtro = cargar_json()
-# Dic_filtro = {
-#   "free": 0
-# }
+Dic_filtro = {
+  "free": 0
+}
 
 nombre = "CousinsR"
 

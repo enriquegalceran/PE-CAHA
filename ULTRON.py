@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 """
     Proyecto de Unidad de Limpieza y Tratamiento de Resultados Observacionales Nativo (Proyecto U.L.T.R.O.N.)
@@ -11,7 +12,7 @@ from Salida_limpia import mostrarresultados, stdrobusta
 import numpy as np
 import numpy.ma as ma
 import IMGPlot as ImP
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import os
 import csv
 import argparse
@@ -38,7 +39,7 @@ def mostrar_diccionario(nombre_diccionario):
 
 
 def guardar_json(variable, filename):
-    json_f = json.dumps(variable)
+    json_f = json.dumps(variable, indent=2, sort_keys=True)
     f = open(filename, "w")
     f.write(json_f)
     f.close()
@@ -91,18 +92,30 @@ def sacar_coordenadas_ccd(imagen_, mypath_=False):
     else:
         str_ccdsec = imagen_
         longitud = len(str_ccdsec)+1
+
+    coma = None
     for x in range(1, longitud):
         if str_ccdsec[x] == ',':
             coma = x
             break
+    if coma is None:
+        raise ValueError('coma not defined!')
+
+    puntos = None
     for x in range(coma + 1, longitud):
         if str_ccdsec[x] == ':':
             puntos = x
             break
+    if puntos is None:
+        raise ValueError('puntos not defined!')
+
+    coma2 = None
     for x in range(puntos + 1, longitud):
         if str_ccdsec[x] == ',':
             coma2 = x
             break
+    if coma2 is None:
+        raise ValueError('coma2 not defined!')
 
     x1 = int(str_ccdsec[1:coma])
     y1 = int(str_ccdsec[coma + 1: puntos])
@@ -150,14 +163,16 @@ def obtener_bias(dir_bias_, noche, lista_noches, lista_bias, observador, x1, x2,
     :return:
     """
 
-    bias_asociado_nombre = dir_bias_ + noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}.fits".format(x1, x2,
-                                                                                                               y1, y2,
-                                                                                                               b1, b2)
+    bias_asociado_nombre = dir_bias_ + noche +\
+        "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}.fits".format(x1, x2, y1, y2, b1, b2)
     otro_observador = False
     hace_falta_cambio = True
     indice_bias = None
+    bias_asociado = None
     if bias_asociado_nombre in lista_bias:
         hace_falta_cambio = False
+        exitos = []
+        observadores = []
         bias_asociado = fits.getdata(bias_asociado_nombre, ext=0)
     else:
         exitos = []
@@ -197,11 +212,14 @@ def obtener_bias(dir_bias_, noche, lista_noches, lista_bias, observador, x1, x2,
             bias_asociado = fits.getdata(bias_asociado_n, ext=0)
 
     if hace_falta_cambio:
+        print('Hace falta cambios. Estos son los posibles valores:')
         print(exitos)
         print(observadores)
     else:
         print('existe y sin problemas')
 
+    if bias_asociado is None:
+        raise ValueError('bias_asociado not defined!')
     return bias_asociado, noche, otro_observador
 
 
@@ -521,6 +539,7 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
 
         indice0 = 0
         slicing_push = False
+        cabecera = None
         for imagen in range(len(lista_bias_)):
             if indice_seccion_[imagen] == seccion:
                 image_file = dir_datos_ + noche + '/' + lista_bias_[imagen]
@@ -566,6 +585,9 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
                           [len(indice_seccion_[indice_seccion_ == seccion]), crpix2, crpix1,
                            naxis1_expected, naxis2_expected, nombre_archivo],
                           titulo='Bias Realizado')
+
+        if cabecera is None:
+            raise ValueError('No se ha creado correctamente la cabecera')
 
         masterbias_header = cabecera.copy()
         # if masterbias_header['BLANK']:
@@ -710,7 +732,7 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                     binning2.append(int(fits.open(dir_datos_ + noche + '/' + lista_coincide[i])[0].header['crpix2']))
                     binning1.append(int(fits.open(dir_datos_ + noche + '/' + lista_coincide[i])[0].header['crpix1']))
 
-            bin2_unique, bin2_count = np.unique(binning2, return_counts=True)
+            # bin2_unique, bin2_count = np.unique(binning2, return_counts=True)
             bin1_unique, bin1_count = np.unique(binning1, return_counts=True)
 
             siempre_coincide_binning = True
@@ -722,6 +744,8 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
             # if solo_un_caso_de_binning:  ############################################################################
 
             # Si los binnings coinciden
+            master_flats_colapsado = None
+
             if siempre_coincide_binning:
                 for binning in bin1_unique:
                     lista_actual_bin = []
@@ -744,11 +768,11 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
 
                     master_flats = np.zeros((filtros_count[filtro], naxis1_expected, naxis2_expected), dtype=float)
 
-                    if free_grisma:
-                        center_real = [1075, 1040]
-                        center = [center_real[0] - x1, center_real[1] - y1]
-                        radius = 809  # con 810 tiene un pixel de borde
-                        mask = create_circular_mask(naxis1_expected, naxis2_expected, center=center, radius=radius)
+                    # Generamos máscara
+                    center_real = [1075, 1040]
+                    center = [center_real[0] - x1, center_real[1] - y1]
+                    radius = 809  # con 810 tiene un pixel de borde
+                    mask = create_circular_mask(naxis1_expected, naxis2_expected, center=center, radius=radius)
 
                     mostrarresultados(['N', 'Crpix2', 'Crpix1', 'A', 'B'],
                                       [len(lista_actual_bin), crpix2, crpix1,
@@ -793,6 +817,8 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                         else:
                             valor_medio[i] = np.median(master_flats[i, :, :])
 
+                        # ToDo: QUE LA MEDIANA NO SEA <=0
+
                         # Después ya dividimos
                         master_flats[i, :, :] = np.true_divide(master_flats[i, :, :], valor_medio[i])
 
@@ -802,6 +828,9 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
 
                     # Colapsamos
                     master_flats_colapsado = np.median(master_flats, axis=0)
+
+                    # ToDo: CUANDO SE GENERA, COGER LAS ESQUINAS (~MASK) Y SUSTITUIR POR 1
+
                     # plt.imshow(master_flats_colapsado)
                     # plt.show()
                     # ImP.imgdibujar(master_flats_colapsado)
@@ -811,19 +840,20 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                     # si pone nombre_diccionario[filtro] da el numero del diccionario del filtro
                     nombre_archivo = noche +\
                         "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}-F{6:03d}.fits"\
-                        .format(x1, x2, y1, y2, crpix1, crpix2, nombre_diccionario[filtro])
+                        .format(x1, x2, y1, y2, crpix1, crpix2, int(nombre_diccionario[filtro]))
 
                     masterflats_header = cabecera.copy()
                     if masterflats_header['BLANK']:
                         del masterflats_header['BLANK']
 
+                    if master_flats_colapsado is None:
+                        raise ValueError('No se ha creado correctamente el flat colapsado')
                     masterflats_final = fits.PrimaryHDU(master_flats_colapsado.astype(np.float), masterflats_header)
 
                     masterflats_final.writeto(dir_flats_ + nombre_archivo, overwrite=True)
 
             else:
-                print('no coinciden los binnings')
-                input('Pausa')
+                raise ValueError('No Coinciden los binning en ambos ejes')
 
             if verbose >= 1:
                 coord_lim = ImP.limites_imagen(*coordenadas_dibujo)
@@ -883,10 +913,10 @@ def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_b
 def main():
 
     # ---------------Valores por defecto-------------------------------------------
-    default_dir_datos = 'CAFOS2017/'
-    default_dir_bias = 'Biases/'
-    default_dir_listas = 'Listas/'
-    default_dir_flats = 'Flats/'
+    default_dir_datos = '/media/enrique/TOSHIBA EXT/CAHA/CAFOS2017/'
+    default_dir_bias = '/media/enrique/TOSHIBA EXT/CAHA/Biases2/'
+    default_dir_listas = '/media/enrique/TOSHIBA EXT/CAHA/Listas/'
+    default_dir_flats = '/media/enrique/TOSHIBA EXT/CAHA/Flats/'
     desc_bias = ['bias', 'Bias', 'BIAS']
     desc_flats = ['flats', 'FLATS', 'FLAT', 'Flats', 'Flat', 'flat', 'Skyflat', 'SDkyflat']
     desc_arc = ['arc', 'ARC']
@@ -920,16 +950,19 @@ def main():
     crear_listas_cal_y_sci(lista_noches, args.dir_listas, args.dir_datos, desc_bias, desc_flats, desc_arc,
                            args.verbose, args.calysci)
     tiempo_listas = time.time()
-
+    print(args.bias, args.flat)
+    input('pausa')
     # Creamos los Master Biases
-    realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
-                           args.verbose, args.interactive, args.recortar)
+    if args.bias:
+        realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
+                               args.verbose, args.interactive, args.recortar)
     lista_bias = conseguir_listas_archivos(args.dir_bias)
     tiempo_biases = time.time()
 
     # Creamos los Master Flats
-    realizar_master_flats(lista_noches, lista_bias, args.dir_listas, args.dir_datos, args.dir_bias, args.dir_flats,
-                          args.verbose, args.interactive)
+    if args.flat:
+        realizar_master_flats(lista_noches, lista_bias, args.dir_listas, args.dir_datos, args.dir_bias, args.dir_flats,
+                              args.verbose, args.interactive)
     tiempo_flats = time.time()
 
     # Mostramos resultados de ambos procesos
