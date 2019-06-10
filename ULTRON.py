@@ -774,6 +774,9 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                     radius = 809  # con 810 tiene un pixel de borde
                     mask = create_circular_mask(naxis1_expected, naxis2_expected, center=center, radius=radius)
 
+                    # ToDo: Guardas las máscaras en una carpeta para que no haya que volver a hacerlas
+                    # ToDo: Cronometrar crear la máscara con respecto a cargarla de disco
+
                     mostrarresultados(['N', 'Crpix2', 'Crpix1', 'A', 'B'],
                                       [len(lista_actual_bin), crpix2, crpix1,
                                        naxis1_expected, naxis2_expected],
@@ -933,9 +936,9 @@ def main():
     parser.add_argument('--cmap', type=str, help="Colormap", default='hot')
     parser.add_argument("-i", "--interactive", action="store_true")
     parser.add_argument("--recortar", action="store_true", help="Activar el recorte de imagenes")
-    parser.add_argument("-b", "--bias", action="store_false",
+    parser.add_argument("-nb", "--nobias", action="store_false",
                         help="No realizar los Master Bias (Por Defecto se generan).")
-    parser.add_argument("-f", "--flat", action="store_false",
+    parser.add_argument("-nf", "--noflat", action="store_false",
                         help="No realizar los Master Flat (Por Defecto se generan).")
     parser.add_argument("--calysci", action="store_false",
                         help="Usar cuando los archivos no tienen '-cal-' y '-sci-'"
@@ -953,14 +956,14 @@ def main():
     print(args.bias, args.flat)
     input('pausa')
     # Creamos los Master Biases
-    if args.bias:
+    if args.nobias:
         realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
                                args.verbose, args.interactive, args.recortar)
     lista_bias = conseguir_listas_archivos(args.dir_bias)
     tiempo_biases = time.time()
 
     # Creamos los Master Flats
-    if args.flat:
+    if args.noflat:
         realizar_master_flats(lista_noches, lista_bias, args.dir_listas, args.dir_datos, args.dir_bias, args.dir_flats,
                               args.verbose, args.interactive)
     tiempo_flats = time.time()
