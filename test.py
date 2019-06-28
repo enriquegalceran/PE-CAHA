@@ -76,14 +76,14 @@ radius = 809 # con 810 tiene un pixel de borde
 mask = create_circular_mask(h, w, center=center, radius=radius)
 masked_img = image_data.copy()
 
-masked_img[~mask] = 0
-x = ma.masked_array(image_data, ~mask)
+masked_img[~mask] = 1
+x = ma.masked_array(image_data, ~mask, fill_value = 1.0)
 mediana = ma.median(x)
 
 mostrarresultados(['ccdsec','h', 'w', 'center_real', 'center', 'radius', 'mediana'],
                   [ccdsec, h, w, center_real, center, radius, mediana])
-
-
+print(type(x))
+print(type(masked_img))
 plt.figure()
 plt.imshow(masked_img, origin='low')
 plt.title('masked_img - array[~mask]')

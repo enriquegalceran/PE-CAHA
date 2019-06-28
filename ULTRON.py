@@ -820,7 +820,15 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                         else:
                             valor_medio[i] = np.median(master_flats[i, :, :])
 
-                        # ToDo: QUE LA MEDIANA NO SEA <=0
+                        if valor_medio[i] <= 0:
+                            # ToDo: Comprobar decisión tomada: Si la mediana para cada flat sale <0,
+                            #  tomar el valor absoluto y si sale exactamente 0 tomar 1
+                            # raise ValueError('El valor de la mediana no debe ser negativo ni 0.')
+
+                            if valor_medio[i] == 0:
+                                valor_medio[i] = 1
+                            else:
+                                valor_medio[i] = abs(valor_medio[i])
 
                         # Después ya dividimos
                         master_flats[i, :, :] = np.true_divide(master_flats[i, :, :], valor_medio[i])
@@ -832,7 +840,8 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                     # Colapsamos
                     master_flats_colapsado = np.median(master_flats, axis=0)
 
-                    # ToDo: CUANDO SE GENERA, COGER LAS ESQUINAS (~MASK) Y SUSTITUIR POR 1
+                    # las esquinas las definimos como 1 para evitar problemas de dividir por 0
+                    master_flats_colapsado[~mask] = 1
 
                     # plt.imshow(master_flats_colapsado)
                     # plt.show()
