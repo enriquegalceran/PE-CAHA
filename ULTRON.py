@@ -144,7 +144,6 @@ def sacar_coordenadas_2(lista, idx):
 
 def obtener_bias(dir_bias_, noche, lista_noches, lista_bias, x1, x2, y1, y2, b1, b2,
                  busqueda_max=10, relleno=680, verbose=False):
-
     """
     Busca en la lista de bias disponibles si exite un archivo de bias para la misma noche en la que se hizo la foto.
     Si exite, usará esa directamente. Si no existe, busca una imagen de bias diferente del mismo autor de noches
@@ -177,7 +176,12 @@ def obtener_bias(dir_bias_, noche, lista_noches, lista_bias, x1, x2, y1, y2, b1,
         for i in range(1, busqueda_max):
             for mult in [-1, 1]:
                 indice = i * mult
-                noche = lista_noches[posicion + indice]
+                pos_nueva = posicion + indice
+                if pos_nueva >= len(lista_noches):
+                    # ToDo: Comprobar que si se pasa de la lista de noches no vuelve a
+                    #  empezar por el principio del año. Tendría que mirar para el año siguiente...
+                    break
+                noche = lista_noches[pos_nueva]
                 bias_asociado_nuevo = dir_bias_ + noche + \
                     "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}.fits"\
                     .format(x1, x2, y1, y2, b1, b2)
@@ -203,6 +207,84 @@ def obtener_bias(dir_bias_, noche, lista_noches, lista_bias, x1, x2, y1, y2, b1,
         bias_asociado = np.full((naxis1_expected, naxis2_expected), relleno, dtype=float)
 
     return existe, bias_asociado_nombre, bias_asociado
+
+
+def obtener_flats(dir_flats_, noche_, lista_noches, lista_flats, x1, x2, y1, y2, b1, b2,
+                  id_filtro_, busqueda_max=10, relleno=1, verbose=False):
+    """
+        Busca en la lista de bias disponibles si exite un archivo de bias para la misma noche en la que se hizo la foto.
+        Si exite, usará esa directamente. Si no existe, busca una imagen de bias diferente del mismo autor de noches
+        cercanas. Si no hay, genera un bias plano.
+
+    :param dir_flats_:
+    :param noche_:
+    :param lista_noches:
+    :param lista_flats:
+    :param x1:
+    :param x2:
+    :param y1:
+    :param y2:
+    :param b1:
+    :param b2:
+    :param id_filtro_:
+    :param busqueda_max:
+    :param relleno:
+    :param verbose:
+    :return:
+    """
+
+    flat_asociado_nombre = dir_flats_ + noche_ + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}-F{6:03d}.fits" \
+        .format(x1, x2, y1, y2, b1, b2, id_filtro_)
+    existe = False
+    cogido_otro = False
+
+    if flat_asociado_nombre in lista_flats:
+        existe = True
+    else:
+        posicion = lista_noches.index(noche_)
+        for i in range(1, busqueda_max):
+            if existe:
+                break
+            for mult in [-1, 1]:
+                indice = i * mult
+                pos_nueva = posicion + indice
+                if pos_nueva >= len(lista_noches):
+                    # ToDo: Comprobar que si se pasa de la lista de noches no vuelve a
+                    #  empezar por el principio del año. Tendría que mirar para el año siguiente...
+                    break
+                noche = lista_noches[pos_nueva]
+                flat_asociado_nuevo = dir_flats_ + noche + \
+                    "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}-F{6:03d}.fits" \
+                    .format(x1, x2, y1, y2, b1, b2, id_filtro_)
+
+                if flat_asociado_nuevo in lista_flats:
+                    flat_asociado_nombre = flat_asociado_nuevo
+                    existe = True
+                    cogido_otro = True
+                    break
+
+    if existe:
+        if verbose:
+            if cogido_otro:
+                print('Se ha cogido un flat de un dia diferente. El flat que se ha cogido es:')
+                print(flat_asociado_nombre)
+            else:
+                print('Existe el flat asociado')
+        flat_asociado = fits.getdata(flat_asociado_nombre, ext=0)
+    else:
+        if verbose:
+            print('No hay flats cercanos validos. Se ha generado uno.')
+
+        # ToDo: coger un valor alternativo para los flats que no encuentre?
+        #  De momento he puesto '1' (vamos, que no hace nada)
+        # flat_asociado = None
+        # if flat_asociado is None:
+        #     raise ValueError('No hay definido un valor por defecto para el flat')
+        naxis1_expected = int((y2 - y1 + 1) / b2)
+        naxis2_expected = int((x2 - x1 + 1) / b1)
+        flat_asociado = np.full((naxis1_expected, naxis2_expected), relleno, dtype=float)
+
+    return existe, flat_asociado_nombre, flat_asociado
 
 
 def create_circular_mask(h, w, center=None, radius=None):
@@ -470,29 +552,7 @@ def slicing_data(slicing_push, size_da, size_mb):
         s4 = size_mb[1]
     return s1, s2, s3, s4
 
- #
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
+
 ########################################################################################################################
 
 
@@ -900,10 +960,11 @@ def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_b
 
 
 def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_datos, dir_bias, dir_flats, dir_reducc,
-                       verbose, interactive):
+                       verbose=True, interactive=None):
     # Cargar listas
     dic_filtro = cargar_json()
     no_existen = []
+    imagenes_totales_de_ciencia = 0
 
     for noche in lista_noches:
         print(noche)
@@ -912,7 +973,7 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
 
         lista_ciencia = leer_lista(dir_listas + noche + '/' + 'SCI.csv')
         no_existe = (0, 0, len(lista_ciencia))
-        secciones, secciones_unicas, secciones_count, indice_seccion, bin_secciones, nombres_filtros = crear_lista_unicos(
+        secc, secc_unicas, secc_count, indice_secc, bin_secc, nombres_filtros = crear_lista_unicos(
             dir_datos, noche, lista_ciencia, cabecera='CCDSEC', binning=True, nombre_filtro=True
         )
 
@@ -924,20 +985,20 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
         # coordenadas_secciones: coordenadas de las dierentes secciones
         # size-secciones: tamanyo de las imagenes en cada seccion
 
-        # print('secciones')
-        # print(secciones)
+        # print('secc')
+        # print(secc)
         #
-        # print('secciones_unicas')
-        # print(secciones_unicas)
+        # print('secc_unicas')
+        # print(secc_unicas)
         #
-        # print('secciones_count')
-        # print(secciones_count)
+        # print('secc_count')
+        # print(secc_count)
         #
-        # print('indice_seccion')
-        # print(indice_seccion)
+        # print('indice_secc')
+        # print(indice_secc)
         #
-        # print('bin_secciones')
-        # print(bin_secciones)
+        # print('bin_secc')
+        # print(bin_secc)
         #
         # print('nombres_filtros')
         # print(nombres_filtros)
@@ -945,17 +1006,17 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
         # input('espera')
 
         for imagen in range(len(lista_ciencia)):
-            # print('Seccion', sacar_coordenadas_ccd(secciones_unicas[indice_seccion[imagen]]))
-            # print('Binning', bin_secciones[indice_seccion[imagen]])
+            # print('Seccion', sacar_coordenadas_ccd(secc_unicas[indice_secc[imagen]]))
+            # print('Binning', bin_secc[indice_secc[imagen]])
             # print('nombre_filtro', nombres_filtros[imagen])
             # print('ID_filtro', dic_filtro[nombres_filtros[imagen]])
 
             # Obtenemos las coordenadas
-            coordenadas = sacar_coordenadas_ccd(secciones_unicas[indice_seccion[imagen]])
+            coordenadas = sacar_coordenadas_ccd(secc_unicas[indice_secc[imagen]])
             x1, x2, y1, y2 = deshacer_tupla_coord(coordenadas)
 
             # Optenemos el binning
-            binning = bin_secciones[indice_seccion[imagen]]
+            binning = bin_secc[indice_secc[imagen]]
 
             # Obtenemos el nombre del filtro y su ID_filtro
             nombrefiltro = nombres_filtros[imagen]
@@ -965,7 +1026,7 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
             nombre_bias = dir_bias + noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}.fits"\
                 .format(x1, x2, y1, y2, binning[0], binning[1])
             bias_buscado = obtener_bias(dir_bias, noche, lista_noches, lista_bias,
-                                        x1, x2, y1, y2, binning[0], binning[1])
+                                        x1, x2, y1, y2, binning[0], binning[1], verbose=verbose)
 
             if not bias_buscado[0]:
                 print('No Existe el bias {0}'.format(nombre_bias))
@@ -974,16 +1035,22 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
             # Buscamos el flat
             nombre_flat = dir_flats + noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}-F{6:03d}.fits"\
                 .format(x1, x2, y1, y2, binning[0], binning[1], int(id_filtro))
-            if nombre_flat not in lista_flats:
+            flat_buscado = obtener_flats(dir_flats, noche, lista_noches, lista_flats,
+                                         x1, x2, y1, y2, binning[0], binning[1],
+                                         int(id_filtro), busqueda_max=10, relleno=1, verbose=verbose)
+            if not flat_buscado[0]:
                 print('No Existe el flat {0}'.format(nombre_flat))
                 no_existe = (no_existe[0], no_existe[1] + 1, no_existe[2])
+
             # ToDo: Hay que buscar el flat para los días anteriores y/o posteriores (igual que con los biases).
             #  Probablemente la forma más sencilla sea generando una nueva función que busque entre las listas de flats.
 
             # Reducimos la imagen
             # (base-bias)/flat
+            # ToDo: Reducir las imagenes
 
             # Guardamos la imagen
+            # ToDo: Guardar las imagenes
 
         # Al final de cada noche se hace el recuento
         no_existen.append(no_existe)
@@ -991,10 +1058,12 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
     mostrarresultados(lista_noches, no_existen)
     no_existen_2 = [0, 0]
     for i in range(len(no_existen)):
+        imagenes_totales_de_ciencia += no_existen[i][2]
         no_existen_2[0] += no_existen[i][0]
         no_existen_2[1] += no_existen[i][1]
 
-    print('Biases que no ha funcionado: ', no_existen_2[0], 'Flats que no ha funcionado: ', no_existen_2[1])
+    print('Biases que no ha funcionado: ', no_existen_2[0], 'Flats que no ha funcionado: ', no_existen_2[1],
+          'Imagenes en total: ', imagenes_totales_de_ciencia)
 
 
 
@@ -1036,6 +1105,7 @@ def main():
 
     # Creamos una lista de las noches disponibles
     lista_noches = os.listdir(args.dir_datos)
+    lista_noches.sort()
     tiempo_inicio = time.time()
 
     # Separamos entre calibración y ciencia
