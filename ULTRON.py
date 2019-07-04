@@ -960,11 +960,12 @@ def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_b
 
 
 def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_datos, dir_bias, dir_flats, dir_reducc,
-                       verbose=True, interactive=None):
+                       verbose=True):
     # Cargar listas
     dic_filtro = cargar_json()
     no_existen = []
     imagenes_totales_de_ciencia = 0
+    imagenes_guardadas = 0
 
     for noche in lista_noches:
         print(noche)
@@ -977,40 +978,7 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
             dir_datos, noche, lista_ciencia, cabecera='CCDSEC', binning=True, nombre_filtro=True
         )
 
-        # Variables:
-        # secciones_unicas: lista de STR con las diferentes configuraciones de CCD que se usan
-        # secciones_count: cuantas veces aparecen estas configuraciones
-        # secciones: lista completa de STR de las secciones. se usa de apoyo. Se puede borrar despues
-        # indice_seccion: INT con cual de las secciones pertenecen las calibraciones
-        # coordenadas_secciones: coordenadas de las dierentes secciones
-        # size-secciones: tamanyo de las imagenes en cada seccion
-
-        # print('secc')
-        # print(secc)
-        #
-        # print('secc_unicas')
-        # print(secc_unicas)
-        #
-        # print('secc_count')
-        # print(secc_count)
-        #
-        # print('indice_secc')
-        # print(indice_secc)
-        #
-        # print('bin_secc')
-        # print(bin_secc)
-        #
-        # print('nombres_filtros')
-        # print(nombres_filtros)
-
-        # input('espera')
-
         for imagen in range(len(lista_ciencia)):
-            # print('Seccion', sacar_coordenadas_ccd(secc_unicas[indice_secc[imagen]]))
-            # print('Binning', bin_secc[indice_secc[imagen]])
-            # print('nombre_filtro', nombres_filtros[imagen])
-            # print('ID_filtro', dic_filtro[nombres_filtros[imagen]])
-
             # Obtenemos las coordenadas
             coordenadas = sacar_coordenadas_ccd(secc_unicas[indice_secc[imagen]])
             x1, x2, y1, y2 = deshacer_tupla_coord(coordenadas)
@@ -1042,15 +1010,23 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
                 print('No Existe el flat {0}'.format(nombre_flat))
                 no_existe = (no_existe[0], no_existe[1] + 1, no_existe[2])
 
-            # ToDo: Hay que buscar el flat para los días anteriores y/o posteriores (igual que con los biases).
-            #  Probablemente la forma más sencilla sea generando una nueva función que busque entre las listas de flats.
-
             # Reducimos la imagen
-            # (base-bias)/flat
-            # ToDo: Reducir las imagenes
+            nombre_ciencia = dir_datos + noche + '/' + lista_ciencia[imagen]
+            image_data = fits.getdata(nombre_ciencia, ext=0)
+            cabecera = fits.open(nombre_ciencia)[0].header
+            reducido_header = cabecera.copy()
+
+            reducido_datos = (image_data - bias_buscado[2]) / flat_buscado[2]
+
+            if reducido_header['BLANK']:
+                del reducido_header['BLANK']
 
             # Guardamos la imagen
-            # ToDo: Guardar las imagenes
+            reducido_final = fits.PrimaryHDU(reducido_datos.astype(np.float), reducido_header)
+
+            reducido_final.writeto(dir_reducc + noche + '/' + 'r_' + lista_ciencia[imagen], overwrite=True)
+
+            imagenes_guardadas += 1
 
         # Al final de cada noche se hace el recuento
         no_existen.append(no_existe)
@@ -1062,9 +1038,8 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
         no_existen_2[0] += no_existen[i][0]
         no_existen_2[1] += no_existen[i][1]
 
-    print('Biases que no ha funcionado: ', no_existen_2[0], 'Flats que no ha funcionado: ', no_existen_2[1],
-          'Imagenes en total: ', imagenes_totales_de_ciencia)
-
+    print('Biases que no ha funcionado: ', no_existen_2[0], '| Flats que no ha funcionado: ', no_existen_2[1],
+          '| Imagenes en total: ', imagenes_totales_de_ciencia, '| Imagenes reducidas: ', imagenes_guardadas)
 
 
 def main():
@@ -1133,7 +1108,7 @@ def main():
     if args.noreducc:
         realizar_reduccion(lista_noches, lista_bias, lista_flats,
                            args.dir_listas, args.dir_datos, args.dir_bias, args.dir_flats, args.dir_reducc,
-                           args.verbose, args.interactive)
+                           args.verbose)
     tiempo_reducc = time.time()
 
     # Mostramos resultados de ambos procesos
