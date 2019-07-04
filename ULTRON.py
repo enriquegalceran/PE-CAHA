@@ -1022,6 +1022,8 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
     print('Biases que no ha funcionado: ', no_existen_2[0], '| Flats que no ha funcionado: ', no_existen_2[1],
           '| Imagenes en total: ', imagenes_totales_de_ciencia, '| Imagenes reducidas: ', imagenes_guardadas)
 
+    return imagenes_guardadas
+
 
 def main():
 
@@ -1075,6 +1077,10 @@ def main():
     if args.nobias:
         realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
                                args.verbose, args.interactive, args.recortar)
+        numero_bias = len(os.listdir(args.dir_bias))
+    else:
+        numero_bias = '-'
+
     lista_bias = conseguir_listas_archivos(args.dir_bias)
     tiempo_biases = time.time()
 
@@ -1082,23 +1088,29 @@ def main():
     if args.noflat:
         realizar_master_flats(lista_noches, lista_bias, args.dir_listas, args.dir_datos, args.dir_bias, args.dir_flats,
                               args.verbose, args.interactive)
+        numero_flats = len(os.listdir(args.dir_flats))
+    else:
+        numero_flats = '-'
+
     lista_flats = conseguir_listas_archivos(args.dir_flats)
     tiempo_flats = time.time()
 
     # Juntamos todos los procesos y relizamos la reducción
     if args.noreducc:
-        realizar_reduccion(lista_noches, lista_bias, lista_flats,
-                           args.dir_listas, args.dir_datos, args.dir_bias, args.dir_flats, args.dir_reducc,
-                           args.verbose)
+        numeros_reducidos = realizar_reduccion(lista_noches, lista_bias, lista_flats,
+                                               args.dir_listas, args.dir_datos, args.dir_bias,
+                                               args.dir_flats, args.dir_reducc, args.verbose)
+    else:
+        numeros_reducidos = '-'
     tiempo_reducc = time.time()
 
     # Mostramos resultados de ambos procesos
     mostrarresultados(['Tiempo Listas', 'Tiempo Master Bias', 'Tiempo Master Flats', 'Tiempo Reduccion', 'Tiempo Total',
-                       'Cuantos Biases', 'Cuantos Flats'],
+                       'Cuantos Biases', 'Cuantos Flats', 'Cuantos Reducidos'],
                       [round(tiempo_listas - tiempo_inicio, 2), round(tiempo_biases - tiempo_listas, 2),
                        round(tiempo_flats - tiempo_biases, 2), round(tiempo_reducc - tiempo_flats, 2),
                        round(tiempo_reducc - tiempo_listas, 2),
-                       len(os.listdir(args.dir_bias)), len(os.listdir(args.dir_flats))],
+                       numero_bias, numero_flats, numeros_reducidos],
                       titulo='Tiempo Ejecucion')
 
 
