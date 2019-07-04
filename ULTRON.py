@@ -943,7 +943,7 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
     imagenes_totales_de_ciencia = 0
     imagenes_guardadas = 0
 
-    for noche in lista_noches[0:3]:
+    for noche in lista_noches:
         imagenes_reducidas_noche = 0
         print(noche)
         if noche not in os.listdir(dir_reducc):
@@ -1029,7 +1029,7 @@ def main():
 
     # ---------------Valores por defecto-------------------------------------------
     default_dir_datos = '/media/enrique/TOSHIBA EXT/CAHA/CAFOS2017/'
-    default_dir_bias = '/media/enrique/TOSHIBA EXT/CAHA/Biases2/'
+    default_dir_bias = '/media/enrique/TOSHIBA EXT/CAHA/Biases/'
     default_dir_listas = '/media/enrique/TOSHIBA EXT/CAHA/Listas/'
     default_dir_flats = '/media/enrique/TOSHIBA EXT/CAHA/Flats/'
     default_dir_reduccion = '/media/enrique/TOSHIBA EXT/CAHA/Reduccion/'
