@@ -813,10 +813,8 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                             input('Pausado. Pulsa Enter para continuar...')
                         indice0 += 1
 
-                    observador = cabecera['OBSERVER']
                     existe, bias_asociado_nombre, bias_asociado = obtener_bias(dir_bias_, noche, lista_noches,
-                                                                               lista_bias, observador,
-                                                                               x1, x2, y1, y2,
+                                                                               lista_bias, x1, x2, y1, y2,
                                                                                crpix1, crpix2)
 
                     for i in range(master_flats.shape[0]):
