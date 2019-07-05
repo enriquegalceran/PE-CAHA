@@ -941,7 +941,7 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
     imagenes_totales_de_ciencia = 0
     imagenes_guardadas = 0
 
-    for noche in lista_noches:
+    for noche in lista_noches[12:]:
         imagenes_reducidas_noche = 0
         print(noche)
         if noche not in os.listdir(dir_reducc):
@@ -990,6 +990,19 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
             image_data = fits.getdata(nombre_ciencia, ext=0)
             cabecera = fits.open(nombre_ciencia)[0].header
             reducido_header = cabecera.copy()
+
+            # ToDo: la imagen tiene overscan!
+            # BIASSEC = '[2049,1:2167,2048]' / overscan portion of frame [x1:y1,x2:y2]
+            # DATASEC = '[1,1:2048,2048]'    / image portion of frame [x1,y1:x2,y2]
+            # CCDSEC  = '[1,1:2048,2048]'    / orientation to full frame [x1,y1:x2:y2]
+
+            # naxis1_expected = int((y2 - y1 + 1) / binning[1])
+            # naxis2_expected = int((x2 - x1 + 1) / binning[0])
+            # ImP.imgdibujar(image_data)
+            # print(nombre_ciencia)
+            # print(x1, x2, y1, y2, binning[0], binning[1])
+            # print(naxis1_expected, naxis2_expected)
+            # print(image_data.shape, bias_buscado[2].shape, flat_buscado[2].shape)
 
             reducido_datos = (image_data - bias_buscado[2]) / flat_buscado[2]
 
