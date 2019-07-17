@@ -10,6 +10,7 @@
 from astropy.io import fits
 from Salida_limpia import mostrarresultados, stdrobusta
 import numpy as np
+import pandas as pd
 import numpy.ma as ma
 import IMGPlot as ImP
 # import matplotlib.pyplot as plt
@@ -17,12 +18,18 @@ import os
 import csv
 import argparse
 import time
+import datetime
 import warnings
 import json
 
 
 def deshacer_tupla_coord(tupla):
     return tupla[0], tupla[1], tupla[2], tupla[3]
+
+
+def str2datetime(string):
+    salida = datetime.datetime.strptime(string, '%Y-%m-%dT%H:%M:%S')
+    return salida
 
 
 def guardar_listas_csv(csvfile, res):
@@ -350,23 +357,6 @@ def crear_lista_unicos(dir_datos, noche, lista_cosas, cabecera, binning=False, n
     return lista, lista_unicas, lista_count, indice_cosas, bin_secciones, nombres_filtros
 
 
-def listas_archivos(path_):
-    lista_cal = []
-    lista_sci = []
-    lista_misc = []
-    listaarchivos = []
-    for file in os.listdir(path_):
-        if file.endswith(".fits"):
-            if '-cal-' in file:
-                lista_cal.append(file)
-            elif '-sci-' in file:
-                lista_sci.append(file)
-            else:
-                lista_misc.append(file)
-            listaarchivos.append(os.path.join(path_, file))
-    return lista_cal, lista_sci, lista_misc, listaarchivos
-
-
 def imagen_mas_probable(archivo):
     image_data = fits.getdata(archivo, ext=0)
     v_median = np.median(image_data)
@@ -559,6 +549,7 @@ def slicing_data(slicing_push, size_da, size_mb):
 def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secciones_count_, indice_seccion_,
                          bin_secciones_, dir_bias_, dir_datos_, lista_bias_, verbose=0,
                          interactive=False, recortar=False):
+    elemento_lista = None
     for seccion in range(len(secciones_unicas_)):
         print('seccion: ' + str(seccion))
         coordenadas_dibujo = sacar_coordenadas_2(coordenadas_secciones_, seccion)
@@ -647,9 +638,38 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
             # plt.show()
             input("Press Enter to continue...")
 
+        # Añadirlo a la tabla
+        fecha = str2datetime(masterbias_header['DATE'])
+        if elemento_lista is None:
+            elemento_lista = pd.DataFrame([[naxis1_expected, naxis2_expected,
+                                           crpix1, crpix2,
+                                           nombre_archivo,
+                                           noche,
+                                           fecha, fecha.date(), fecha.time()]],
+                                          columns=['Naxis1', 'Naxis2',
+                                                   'Binning1', 'Binning2',
+                                                   'nombre_archivo',
+                                                   'noche',
+                                                   'fecha', 'dia', 'hora'])
+        else:
+            elemento_lista_ = pd.DataFrame([[naxis1_expected, naxis2_expected,
+                                            crpix1, crpix2,
+                                            nombre_archivo,
+                                            noche,
+                                            fecha, fecha.date(), fecha.time()]],
+                                           columns=['Naxis1', 'Naxis2',
+                                                    'Binning1', 'Binning2',
+                                                    'nombre_archivo',
+                                                    'noche',
+                                                    'fecha', 'dia', 'hora'])
+            elemento_lista = pd.concat([elemento_lista, elemento_lista_], ignore_index=True)
+
+    return elemento_lista
+
 
 def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbose, interactive, recortar):
     i_noche = 0
+    df_bias = None
     for noche in lista_noches:
         i_noche += 1
         print('=== NOCHE ' + noche + ' - (' + str(i_noche) + '/' + str(len(lista_noches)) + ') ===')
@@ -676,9 +696,18 @@ def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbos
         # for k in range(len(secciones_unicas)):
         #     add_to_file('BiasSecciones.csv', secciones_unicas[k] + ';' + str(secciones_count[k]) + '\n')
 
-        juntar_imagenes_bias(noche, secciones_unicas, coordenadas_secciones, secciones_count,
-                             indice_seccion, bin_secciones, dir_bias, dir_datos, lista_bias,
-                             verbose=verbose, interactive=interactive, recortar=recortar)
+        df_bias_ = juntar_imagenes_bias(noche, secciones_unicas, coordenadas_secciones, secciones_count,
+                                        indice_seccion, bin_secciones, dir_bias, dir_datos, lista_bias,
+                                        verbose=verbose, interactive=interactive, recortar=recortar)
+        if df_bias is None:
+            df_bias = df_bias_
+        else:
+            df_bias = pd.concat([df_bias, df_bias_], ignore_index=True)
+
+        print(df_bias)
+        input('listo')
+
+    return df_bias
 
 
 def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indice_seccion_,
