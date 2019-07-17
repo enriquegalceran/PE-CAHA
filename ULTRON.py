@@ -178,8 +178,7 @@ def obtener_bias(dir_bias_, noche, lista_noches, lista_bias, x1, x2, y1, y2, b1,
                 indice = i * mult
                 pos_nueva = posicion + indice
                 if pos_nueva >= len(lista_noches):
-                    # ToDo: Comprobar que si se pasa de la lista de noches no vuelve a
-                    #  empezar por el principio del año. Tendría que mirar para el año siguiente...
+                    # Se ha llegado al final del año, y no busca para el año siguiente
                     break
                 noche = lista_noches[pos_nueva]
                 bias_asociado_nuevo = dir_bias_ + noche + \
@@ -249,8 +248,7 @@ def obtener_flats(dir_flats_, noche_, lista_noches, lista_flats, x1, x2, y1, y2,
                 indice = i * mult
                 pos_nueva = posicion + indice
                 if pos_nueva >= len(lista_noches):
-                    # ToDo: Comprobar que si se pasa de la lista de noches no vuelve a
-                    #  empezar por el principio del año. Tendría que mirar para el año siguiente...
+                    # Se ha llegado al final del año, y no busca para el año siguiente
                     break
                 noche = lista_noches[pos_nueva]
                 flat_asociado_nuevo = dir_flats_ + noche + \
@@ -275,8 +273,6 @@ def obtener_flats(dir_flats_, noche_, lista_noches, lista_flats, x1, x2, y1, y2,
         if verbose:
             print('No hay flats cercanos validos. Se ha generado uno.')
 
-        # ToDo: coger un valor alternativo para los flats que no encuentre?
-        #  De momento he puesto '1' (vamos, que no hace nada)
         # flat_asociado = None
         # if flat_asociado is None:
         #     raise ValueError('No hay definido un valor por defecto para el flat')
@@ -490,6 +486,10 @@ def listas_archivos2(path_, desc_bias, desc_flats, desc_arc, verbose=False, caly
     # listaarchivos = listaarchivos.sort()
     # lista_falla = lista_falla.sort()
 
+    # Todo: Cuando genera las listas, debe además generar una tabla que se pueda leer tengas las siguientes columnas:
+    #  Naxis 1 y 2, binning 1 y 2, carpeta (noche), nombre del archivo y filtro
+    #  La gracia de esto está en que cuando se vaya a hacer las reducciones de imágenes lo tenga facil de ver
+
     return lista_bias, lista_flat, lista_arc, lista_ciencia, listaarchivos, lista_falla
 
 
@@ -635,7 +635,7 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
         # if masterbias_header['BLANK']:
         #     del masterbias_header['BLANK']
 
-        masterbias_final = fits.PrimaryHDU(master_bias_colapsado.astype(np.float), masterbias_header)
+        masterbias_final = fits.PrimaryHDU(master_bias_colapsado.astype(np.float32), masterbias_header)
 
         masterbias_final.writeto(dir_bias_ + nombre_archivo, overwrite=True)
 
@@ -722,8 +722,8 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
 
         # Esto sólo será necesario si NO hay grisma, luego miramos cual es el grima que le corresponde
         numero_grisma = fits.open(dir_datos_ + noche + '/' + lista_coincide[0])[0]\
-            .header['insgrid']\
-            .replace(' ', '0')[6:8]
+            .header['insgrid'].replace(' ', '0')[6:8]
+
         if numero_grisma == 11:  # Si numero_grisma==11, entonces no hay grisma de por medio
             free_grisma = True
         else:
@@ -832,8 +832,6 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                             valor_medio[i] = np.median(master_flats[i, :, :])
 
                         if valor_medio[i] <= 0:
-                            # ToDo: Comprobar decisión tomada: Si la mediana para cada flat sale <0,
-                            #  tomar el valor absoluto y si sale exactamente 0 tomar 1
                             # raise ValueError('El valor de la mediana no debe ser negativo ni 0.')
 
                             if valor_medio[i] == 0:
@@ -872,7 +870,7 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
 
                     if master_flats_colapsado is None:
                         raise ValueError('No se ha creado correctamente el flat colapsado')
-                    masterflats_final = fits.PrimaryHDU(master_flats_colapsado.astype(np.float), masterflats_header)
+                    masterflats_final = fits.PrimaryHDU(master_flats_colapsado.astype(np.float32), masterflats_header)
 
                     masterflats_final.writeto(dir_flats_ + nombre_archivo, overwrite=True)
 
@@ -941,7 +939,7 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
     imagenes_totales_de_ciencia = 0
     imagenes_guardadas = 0
 
-    for noche in lista_noches[12:]:
+    for noche in lista_noches[11:]:
         imagenes_reducidas_noche = 0
         print(noche)
         if noche not in os.listdir(dir_reducc):
@@ -953,7 +951,8 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
             dir_datos, noche, lista_ciencia, cabecera='CCDSEC', binning=True, nombre_filtro=True
         )
 
-        for imagen in range(len(lista_ciencia)):
+#        for imagen in range(len(lista_ciencia)):
+        for imagen in range(1):
             # Obtenemos las coordenadas
             coordenadas = sacar_coordenadas_ccd(secc_unicas[indice_secc[imagen]])
             x1, x2, y1, y2 = deshacer_tupla_coord(coordenadas)
@@ -991,7 +990,32 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
             cabecera = fits.open(nombre_ciencia)[0].header
             reducido_header = cabecera.copy()
 
-            # ToDo: la imagen tiene overscan!
+            # Conseguimos las coordenadas a recortar
+            datasec = fits.open(nombre_ciencia)[0].header['DATASEC']
+            biassec = fits.open(nombre_ciencia)[0].header['BIASSEC']
+            ccdsec = fits.open(nombre_ciencia)[0].header['CCDSEC']
+            coordenadas_ciencia = sacar_coordenadas_ccd(datasec)
+            coordenadas_bias = sacar_coordenadas_ccd(biassec)
+            x_1, x_2, y_1, y_2 = deshacer_tupla_coord(coordenadas_ciencia)
+            x_1_, x_2_, y_1_, y_2_ = deshacer_tupla_coord(coordenadas_bias)
+            print('###################')
+            print(x_1 - x_1_, x_2 - x_2_, y_1 - y_1_, y_2 - y_2_)
+            print('data, bias, ccd')
+            print(datasec)
+            print(biassec)
+            print(ccdsec)
+            print(coordenadas_ciencia)
+            print(coordenadas_bias)
+
+            naxis1_ciencia = int((y_2 - y_1 + 1) / binning[1])
+            naxis2_ciencia = int((x_2 - x_1 + 1) / binning[0])
+            image_data_recortada = image_data[(y_1 - 1):naxis1_ciencia, (x_1 - 1):naxis2_ciencia]
+            print(image_data_recortada.shape)
+            print(bias_buscado[2].shape, flat_buscado[2].shape)
+            # ToDo: Tengo que recortar el overscan?¿?¿?¿?
+
+            input('esperar')
+
             # BIASSEC = '[2049,1:2167,2048]' / overscan portion of frame [x1:y1,x2:y2]
             # DATASEC = '[1,1:2048,2048]'    / image portion of frame [x1,y1:x2,y2]
             # CCDSEC  = '[1,1:2048,2048]'    / orientation to full frame [x1,y1:x2:y2]
@@ -1004,15 +1028,29 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
             # print(naxis1_expected, naxis2_expected)
             # print(image_data.shape, bias_buscado[2].shape, flat_buscado[2].shape)
 
-            reducido_datos = (image_data - bias_buscado[2]) / flat_buscado[2]
-
-            if reducido_header['BLANK']:
-                del reducido_header['BLANK']
-
-            # Guardamos la imagen
-            reducido_final = fits.PrimaryHDU(reducido_datos.astype(np.float), reducido_header)
-
-            reducido_final.writeto(dir_reducc + noche + '/' + 'r_' + lista_ciencia[imagen], overwrite=True)
+            # Todo de momento que salte los
+            # reducido_datos = (image_data_recortada - bias_buscado[2]) / flat_buscado[2]
+            #
+            # input('comprobar')
+            #
+            # if reducido_header['BLANK']:
+            #     del reducido_header['BLANK']
+            #
+            # Sacar si tiene o no un grisma
+            # numero_grisma = fits.open(nombre_ciencia).header['insgrid'].replace(' ', '0')[6:8]
+            #
+            # if numero_grisma == 11:  # Si numero_grisma==11, entonces no hay grisma de por medio
+            #     free_grisma = True
+            # else:
+            #     free_grisma = False
+            # ToDo Hay que editar esto para que las esquinas de las imagenes sean 1
+            # if free_grisma:
+            #     master_flats_colapsado[~mask] = 1
+            #
+            # # Guardamos la imagen
+            # reducido_final = fits.PrimaryHDU(reducido_datos.astype(np.float32), reducido_header)
+            #
+            # reducido_final.writeto(dir_reducc + noche + '/' + 'r_' + lista_ciencia[imagen], overwrite=True)
 
             imagenes_reducidas_noche += 1
 
@@ -1081,6 +1119,10 @@ def main():
     crear_listas_cal_y_sci(lista_noches, args.dir_listas, args.dir_datos, desc_bias, desc_flats, desc_arc,
                            args.verbose, args.calysci)
     tiempo_listas = time.time()
+
+    # ToDo: Comprobar si hay o no imágenes que se ha olvidado recortarlas correctamente.
+    #  Hacer tabla pandas con las coordenadas usadas que tenga también:
+    #  binning, FJM, nombre carpeta, nombre de archivo (?) (buscar astropy.time)
 
     print(args.nobias, args.noflat, args.noreducc)
 
