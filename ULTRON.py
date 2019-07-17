@@ -642,22 +642,26 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
         fecha = str2datetime(masterbias_header['DATE'])
         if elemento_lista is None:
             elemento_lista = pd.DataFrame([[naxis1_expected, naxis2_expected,
-                                           crpix1, crpix2,
-                                           nombre_archivo,
-                                           noche,
-                                           fecha, fecha.date(), fecha.time()]],
+                                            x1, x2, y1, y2,
+                                            crpix1, crpix2,
+                                            nombre_archivo,
+                                            noche,
+                                            fecha, fecha.date(), fecha.time()]],
                                           columns=['Naxis1', 'Naxis2',
+                                                   'x1', 'x2', 'y1', 'y2',
                                                    'Binning1', 'Binning2',
                                                    'nombre_archivo',
                                                    'noche',
                                                    'fecha', 'dia', 'hora'])
         else:
             elemento_lista_ = pd.DataFrame([[naxis1_expected, naxis2_expected,
-                                            crpix1, crpix2,
-                                            nombre_archivo,
-                                            noche,
-                                            fecha, fecha.date(), fecha.time()]],
+                                             x1, x2, y1, y2,
+                                             crpix1, crpix2,
+                                             nombre_archivo,
+                                             noche,
+                                             fecha, fecha.date(), fecha.time()]],
                                            columns=['Naxis1', 'Naxis2',
+                                                    'x1', 'x2', 'y1', 'y2',
                                                     'Binning1', 'Binning2',
                                                     'nombre_archivo',
                                                     'noche',
@@ -704,8 +708,8 @@ def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbos
         else:
             df_bias = pd.concat([df_bias, df_bias_], ignore_index=True)
 
-        print(df_bias)
-        input('listo')
+        # print(df_bias)
+        # input('listo')
 
     return df_bias
 
@@ -716,6 +720,7 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
 
     # Cargamos Diccionario de Filtros
     dic_filtro = cargar_json()
+    elemento_lista = None
 
     # Separamos por secciones para cada noche
     for seccion in range(len(secciones_unicas_)):
@@ -750,8 +755,8 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
             nombre_diccionario.append(leer_diccionario(i, dic_filtro))
 
         # Esto sólo será necesario si NO hay grisma, luego miramos cual es el grima que le corresponde
-        numero_grisma = fits.open(dir_datos_ + noche + '/' + lista_coincide[0])[0]\
-            .header['insgrid'].replace(' ', '0')[6:8]
+        numero_grisma = int(fits.open(dir_datos_ + noche + '/' + lista_coincide[0])[0]
+                            .header['insgrid'].replace(' ', '0')[6:8])
 
         if numero_grisma == 11:  # Si numero_grisma==11, entonces no hay grisma de por medio
             free_grisma = True
@@ -826,7 +831,7 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                     mostrarresultados(['N', 'Crpix2', 'Crpix1', 'A', 'B'],
                                       [len(lista_actual_bin), crpix2, crpix1,
                                        naxis1_expected, naxis2_expected],
-                                      titulo='Filtro ' + str(filtros_count[filtro]))
+                                      titulo='Filtro ' + str(nombre_diccionario[filtro]))
 
                     # Leemos para cada elemento de imágenes sus valores y los vamos acoplando
                     indice0 = 0
@@ -903,6 +908,44 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
 
                     masterflats_final.writeto(dir_flats_ + nombre_archivo, overwrite=True)
 
+                    # Añadirlo a la tabla
+                    fecha = str2datetime(masterflats_header['DATE'])
+                    if elemento_lista is None:
+                        elemento_lista = pd.DataFrame([[naxis1_expected, naxis2_expected,
+                                                        x1, x2, y1, y2,
+                                                        crpix1, crpix2,
+                                                        int(nombre_diccionario[filtro]),
+                                                        free_grisma, numero_grisma,
+                                                        nombre_archivo,
+                                                        noche,
+                                                        fecha, fecha.date(), fecha.time()]],
+                                                      columns=['Naxis1', 'Naxis2',
+                                                               'x1', 'x2', 'y1', 'y2',
+                                                               'Binning1', 'Binning2',
+                                                               'filtro',
+                                                               'free_grisma', 'num_grisma',
+                                                               'nombre_archivo',
+                                                               'noche',
+                                                               'fecha', 'dia', 'hora'])
+                    else:
+                        elemento_lista_ = pd.DataFrame([[naxis1_expected, naxis2_expected,
+                                                        x1, x2, y1, y2,
+                                                        crpix1, crpix2,
+                                                        int(nombre_diccionario[filtro]),
+                                                        free_grisma, numero_grisma,
+                                                        nombre_archivo,
+                                                        noche,
+                                                        fecha, fecha.date(), fecha.time()]],
+                                                       columns=['Naxis1', 'Naxis2',
+                                                                'x1', 'x2', 'y1', 'y2',
+                                                                'Binning1', 'Binning2',
+                                                                'filtro',
+                                                                'free_grisma', 'num_grisma',
+                                                                'nombre_archivo',
+                                                                'noche',
+                                                                'fecha', 'dia', 'hora'])
+                        elemento_lista = pd.concat([elemento_lista, elemento_lista_], ignore_index=True)
+
             else:
                 raise ValueError('No Coinciden los binning en ambos ejes')
 
@@ -912,6 +955,8 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
 
             if interactive:
                 input("Press Enter to continue...")
+
+    return elemento_lista
 
 
 def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_bias, dir_flats,
@@ -932,6 +977,7 @@ def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_b
     """
 
     i_noche = 0
+    df_flat = None
     for noche in lista_noches[:]:
         i_noche += 1
         print('=== NOCHE ' + noche + ' - (' + str(i_noche) + '/' + str(len(lista_noches)) + ') ===')
@@ -955,9 +1001,18 @@ def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_b
             coordenadas_unicas = sacar_coordenadas_ccd(secciones_unicas[i])
             coordenadas_secciones[i, :] = [*coordenadas_unicas]
 
-        juntar_imagenes_flats(noche, secciones_unicas, coordenadas_secciones, indice_seccion,
-                              dir_bias, dir_datos, dir_flats, lista_flats, lista_noches, lista_bias,
-                              verbose=verbose, interactive=interactive)
+        df_flat_ = juntar_imagenes_flats(noche, secciones_unicas, coordenadas_secciones, indice_seccion,
+                                         dir_bias, dir_datos, dir_flats, lista_flats, lista_noches, lista_bias,
+                                         verbose=verbose, interactive=interactive)
+
+        if df_flat is None:
+            df_flat = df_flat_
+        else:
+            df_flat = pd.concat([df_flat, df_flat_], ignore_index=True)
+
+        # print(df_flat)
+        # input('listo')
+    return df_flat
 
 
 def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_datos, dir_bias, dir_flats, dir_reducc,
@@ -1155,11 +1210,16 @@ def main():
 
     print(args.nobias, args.noflat, args.noreducc)
 
+    importado_b = pd.read_csv('df_bias.csv')
+    importado_f = pd.read_csv('df_flat.csv')
+
     # Creamos los Master Biases
     if args.nobias:
-        realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
-                               args.verbose, args.interactive, args.recortar)
+        df_bias = realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
+                                         args.verbose, args.interactive, args.recortar)
         numero_bias = len(os.listdir(args.dir_bias))
+        print(df_bias)
+        export_csv_b = df_bias.to_csv('df_bias.csv', index=None, header=True)
     else:
         numero_bias = '-'
 
@@ -1168,11 +1228,16 @@ def main():
 
     # Creamos los Master Flats
     if args.noflat:
-        realizar_master_flats(lista_noches, lista_bias, args.dir_listas, args.dir_datos, args.dir_bias, args.dir_flats,
-                              args.verbose, args.interactive)
+        df_flat = realizar_master_flats(lista_noches, lista_bias,
+                                        args.dir_listas, args.dir_datos, args.dir_bias, args.dir_flats,
+                                        args.verbose, args.interactive)
         numero_flats = len(os.listdir(args.dir_flats))
+        print(df_flat)
+        export_csv_f = df_flat.to_csv('df_flat.csv', index=None, header=True)
     else:
         numero_flats = '-'
+
+    asdfasdf
 
     lista_flats = conseguir_listas_archivos(args.dir_flats)
     tiempo_flats = time.time()
