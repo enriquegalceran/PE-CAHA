@@ -8,6 +8,7 @@
 """
 
 from astropy.io import fits
+from astropy.time import Time
 from Salida_limpia import mostrarresultados, stdrobusta
 import numpy as np
 import pandas as pd
@@ -639,32 +640,34 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
             input("Press Enter to continue...")
 
         # Añadirlo a la tabla
-        fecha = str2datetime(masterbias_header['DATE'])
+        isot_time = masterbias_header['DATE']
+        fecha = str2datetime(isot_time)
+        tiempo = Time(isot_time, format='isot', scale='utc')
         if elemento_lista is None:
             elemento_lista = pd.DataFrame([[naxis1_expected, naxis2_expected,
                                             x1, x2, y1, y2,
                                             crpix1, crpix2,
-                                            nombre_archivo,
-                                            noche,
+                                            nombre_archivo, noche,
+                                            tiempo, tiempo.jd,
                                             fecha, fecha.date(), fecha.time()]],
                                           columns=['Naxis1', 'Naxis2',
                                                    'x1', 'x2', 'y1', 'y2',
                                                    'Binning1', 'Binning2',
-                                                   'nombre_archivo',
-                                                   'noche',
+                                                   'nombre_archivo', 'noche',
+                                                   'tiempo_astropy', 'julian',
                                                    'fecha', 'dia', 'hora'])
         else:
             elemento_lista_ = pd.DataFrame([[naxis1_expected, naxis2_expected,
-                                             x1, x2, y1, y2,
-                                             crpix1, crpix2,
-                                             nombre_archivo,
-                                             noche,
-                                             fecha, fecha.date(), fecha.time()]],
+                                            x1, x2, y1, y2,
+                                            crpix1, crpix2,
+                                            nombre_archivo, noche,
+                                            tiempo, tiempo.jd,
+                                            fecha, fecha.date(), fecha.time()]],
                                            columns=['Naxis1', 'Naxis2',
                                                     'x1', 'x2', 'y1', 'y2',
                                                     'Binning1', 'Binning2',
-                                                    'nombre_archivo',
-                                                    'noche',
+                                                    'nombre_archivo', 'noche',
+                                                    'tiempo_astropy', 'julian',
                                                     'fecha', 'dia', 'hora'])
             elemento_lista = pd.concat([elemento_lista, elemento_lista_], ignore_index=True)
 
@@ -909,23 +912,25 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                     masterflats_final.writeto(dir_flats_ + nombre_archivo, overwrite=True)
 
                     # Añadirlo a la tabla
-                    fecha = str2datetime(masterflats_header['DATE'])
+                    isot_time = masterflats_header['DATE']
+                    fecha = str2datetime(isot_time)
+                    tiempo = Time(isot_time, format='isot', scale='utc')
                     if elemento_lista is None:
                         elemento_lista = pd.DataFrame([[naxis1_expected, naxis2_expected,
                                                         x1, x2, y1, y2,
                                                         crpix1, crpix2,
                                                         int(nombre_diccionario[filtro]),
                                                         free_grisma, numero_grisma,
-                                                        nombre_archivo,
-                                                        noche,
+                                                        nombre_archivo, noche,
+                                                        tiempo, tiempo.jd,
                                                         fecha, fecha.date(), fecha.time()]],
                                                       columns=['Naxis1', 'Naxis2',
                                                                'x1', 'x2', 'y1', 'y2',
                                                                'Binning1', 'Binning2',
                                                                'filtro',
                                                                'free_grisma', 'num_grisma',
-                                                               'nombre_archivo',
-                                                               'noche',
+                                                               'nombre_archivo', 'noche',
+                                                               'tiempo_astropy', 'julian',
                                                                'fecha', 'dia', 'hora'])
                     else:
                         elemento_lista_ = pd.DataFrame([[naxis1_expected, naxis2_expected,
@@ -933,16 +938,16 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                                                         crpix1, crpix2,
                                                         int(nombre_diccionario[filtro]),
                                                         free_grisma, numero_grisma,
-                                                        nombre_archivo,
-                                                        noche,
+                                                        nombre_archivo, noche,
+                                                        tiempo, tiempo.jd,
                                                         fecha, fecha.date(), fecha.time()]],
                                                        columns=['Naxis1', 'Naxis2',
                                                                 'x1', 'x2', 'y1', 'y2',
                                                                 'Binning1', 'Binning2',
                                                                 'filtro',
                                                                 'free_grisma', 'num_grisma',
-                                                                'nombre_archivo',
-                                                                'noche',
+                                                                'nombre_archivo', 'noche',
+                                                                'tiempo_astropy', 'julian',
                                                                 'fecha', 'dia', 'hora'])
                         elemento_lista = pd.concat([elemento_lista, elemento_lista_], ignore_index=True)
 
@@ -1158,6 +1163,61 @@ def realizar_reduccion(lista_noches, lista_bias, lista_flats, dir_listas, dir_da
     return imagenes_guardadas
 
 
+def pruebas_pandas(data):
+    print(data.head())
+    # print(data[data.noche == '170225_t2_CAFOS'])
+    datat = data[data.Naxis1 == 2048]
+    datat = datat[datat.Naxis2 == 1000]
+    print(datat)
+    print(data.nombre_archivo.values[0])
+
+
+def decidir_repetir_calculos(norealizar, sirealizar, sujeto, dir_df, dir_sujetos):
+    existe_bias = os.path.exists(dir_df + 'df_' + sujeto + '.csv')
+    lista_existentes = os.listdir(dir_sujetos)
+    if not any([norealizar, sirealizar]):
+        if existe_bias:
+            print('Se va a coger una version ya existente de los ' + sujeto)
+            importado = pd.read_csv(dir_df + 'df_' + sujeto + '.csv')
+            lista_teorica = importado.nombre_archivo.values.tolist()
+
+            contador_t = 0
+            contador_e = 0
+            for i in range(len(lista_existentes)):
+                if lista_teorica[i] in lista_existentes:
+                    contador_t += 1
+                if lista_existentes[i] in lista_teorica:
+                    contador_e += 1
+
+            if contador_e == len(lista_existentes) and contador_t == len(lista_teorica):
+                print('Estan todos contabilizados, no hace falta volver a calcular los ' + sujeto)
+                realizar = False
+            else:
+                print('No estan todos los ' + sujeto + ', se vuelven a calcular')
+                realizar = True
+        else:
+            print('No existe el dataframe, se calcula el dataframe de los ' + sujeto)
+            realizar = True
+    elif norealizar:
+        if existe_bias:
+            print('Existe el dataframe de ' + sujeto + '. No se repite')
+            realizar = False
+        else:
+            print('No existe el dataframe de ' + sujeto + ', se fuerza que se vuelva a hacer')
+            realizar = True
+    elif sirealizar:
+        if existe_bias:
+            print('Existe el dataframe de ' + sujeto + '. Se fuerza calcularlo de nuevo')
+            realizar = True
+        else:
+            print('No existe el dataframe de ' + sujeto + ', Se fuerza que se haga')
+            realizar = True
+    else:
+        raise ValueError('No cuadran las condiciones para los ' + sujeto + '!')
+
+    return realizar
+
+
 def main():
 
     # ---------------Valores por defecto-------------------------------------------
@@ -1166,6 +1226,7 @@ def main():
     default_dir_listas = '/media/enrique/TOSHIBA EXT/CAHA/Listas/'
     default_dir_flats = '/media/enrique/TOSHIBA EXT/CAHA/Flats/'
     default_dir_reduccion = '/media/enrique/TOSHIBA EXT/CAHA/Reduccion/'
+    default_dir_dataframe = ''
     desc_bias = ['bias', 'Bias', 'BIAS']
     desc_flats = ['flats', 'FLATS', 'FLAT', 'Flats', 'Flat', 'flat', 'Skyflat', 'SDkyflat']
     desc_arc = ['arc', 'ARC']
@@ -1173,6 +1234,9 @@ def main():
 
     parser = argparse.ArgumentParser(description="Bias and Flat calibration of CAFOS images")
     group = parser.add_mutually_exclusive_group()
+    grupo2 = parser.add_mutually_exclusive_group()
+    grupo3 = parser.add_mutually_exclusive_group()
+
     group.add_argument("-v", "--verbose", action="store_true")
     group.add_argument("-q", "--quiet", action="store_true")
     parser.add_argument("-db", "--dir_bias", default=default_dir_bias, type=str, help='Bias Directory')
@@ -1180,19 +1244,32 @@ def main():
     parser.add_argument("-dd", "--dir_datos", default=default_dir_datos, type=str, help='Data Directory')
     parser.add_argument("-dl", "--dir_listas", default=default_dir_listas, type=str, help='Lists Directory')
     parser.add_argument("-de", "--dir_reducc", default=default_dir_reduccion, type=str, help='Reducction Directory')
+    parser.add_argument("-ddf", "--dir_dataf", default=default_dir_dataframe, type=str, help='DataFrame Directory')
     parser.add_argument('--cmap', type=str, help="Colormap", default='hot')
     parser.add_argument("-i", "--interactive", action="store_true")
     parser.add_argument("--recortar", action="store_true", help="Activar el recorte de imagenes")
-    parser.add_argument("-nb", "--nobias", action="store_false",
-                        help="No realizar los Master Bias (Por Defecto se generan).")
-    parser.add_argument("-nf", "--noflat", action="store_false",
-                        help="No realizar los Master Flat (Por Defecto se generan).")
-    parser.add_argument("-nr", "--noreducc", action="store_false",
-                        help="No realizar la reduccion (Por Defecto se generan).")
     parser.add_argument("--calysci", action="store_false",
                         help="Usar cuando los archivos no tienen '-cal-' y '-sci-'"
                              + "en el nombre para diferenciar entre calibración y ciencia.")
+    parser.add_argument("-nr", "--noreducc", action="store_false", help="No realizar la reduccion.")
+
+    grupo2.add_argument("-nb", "--nobias", action="store_true",
+                        help="No realizar los Master Bias.")
+    grupo2.add_argument("-sb", "--sibias", action="store_true",
+                        help="Fuerza realizar los Master Bias.")
+
+    grupo3.add_argument("-nf", "--noflat", action="store_true",
+                        help="No realizar los Master Flat.")
+    grupo3.add_argument("-sf", "--siflat", action="store_true",
+                        help="Fuerza realizar los Master Flat.")
+
     args = parser.parse_args()
+
+    # Comprobamos si queremos/hace falta calcular los bias/flats
+    print('bias:', args.nobias, args.sibias)
+    realizarbias = decidir_repetir_calculos(args.nobias, args.sibias, 'bias', args.dir_dataf, args.dir_bias)
+    print('flat:', args.noflat, args.siflat)
+    realizarflat = decidir_repetir_calculos(args.noflat, args.siflat, 'flat', args.dir_dataf, args.dir_flats)
 
     # Creamos una lista de las noches disponibles
     lista_noches = os.listdir(args.dir_datos)
@@ -1210,24 +1287,27 @@ def main():
 
     print(args.nobias, args.noflat, args.noreducc)
 
-    importado_b = pd.read_csv('df_bias.csv')
-    importado_f = pd.read_csv('df_flat.csv')
+    # importado_b = pd.read_csv('df_bias.csv')
+    # importado_f = pd.read_csv('df_flat.csv')
+    # pruebas_pandas(importado_f)
 
     # Creamos los Master Biases
-    if args.nobias:
+    if realizarbias:
         df_bias = realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
                                          args.verbose, args.interactive, args.recortar)
         numero_bias = len(os.listdir(args.dir_bias))
         print(df_bias)
         export_csv_b = df_bias.to_csv('df_bias.csv', index=None, header=True)
     else:
+        df_bias = pd.read_csv('df_bias.csv')
+        print('Se han importado los bias')
         numero_bias = '-'
 
     lista_bias = conseguir_listas_archivos(args.dir_bias)
     tiempo_biases = time.time()
 
     # Creamos los Master Flats
-    if args.noflat:
+    if realizarflat:
         df_flat = realizar_master_flats(lista_noches, lista_bias,
                                         args.dir_listas, args.dir_datos, args.dir_bias, args.dir_flats,
                                         args.verbose, args.interactive)
@@ -1235,6 +1315,8 @@ def main():
         print(df_flat)
         export_csv_f = df_flat.to_csv('df_flat.csv', index=None, header=True)
     else:
+        df_flat = pd.read_csv('df_flat.csv')
+        print('Se han importado los flats')
         numero_flats = '-'
 
     asdfasdf
