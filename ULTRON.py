@@ -1016,7 +1016,7 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
     imagenes_totales_de_ciencia = 0
     imagenes_guardadas = 0
 
-    for noche in lista_noches[11:]:  # el 12 es el que va mal. 11 todavía va bien
+    for noche in lista_noches[36:]:
         imagenes_reducidas_noche = 0
         print(noche)
         if noche not in os.listdir(dir_reducc):
@@ -1027,8 +1027,9 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
         secc, secc_unicas, secc_count, indice_secc, bin_secc, nombres_filtros = crear_lista_unicos(
             dir_datos, noche, lista_ciencia, cabecera='CCDSEC', binning=True, nombre_filtro=True
         )
-
+        i_imagen = 0
         for imagen in range(len(lista_ciencia)):
+            i_imagen += 1
             # Nombre de la imagen
             nombre_ciencia = dir_datos + noche + '/' + lista_ciencia[imagen]
             cabecera = fits.open(nombre_ciencia)[0].header
@@ -1039,6 +1040,7 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
             binning = bin_secc[indice_secc[imagen]]
             naxis1_r = cabecera['Naxis1']
             naxis2_r = cabecera['Naxis2']
+            # ToDo: realmente es la parte entera?, o es que queremos recortar el último punto?
             naxis1_ciencia = int((y2 - y1 + 1) / binning[1])
             naxis2_ciencia = int((x2 - x1 + 1) / binning[0])
 
@@ -1104,7 +1106,8 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
                                    binning, nombrefiltro, id_filtro,
                                    tiempo.jd, overscan,
                                    imagen, lista_ciencia[imagen],
-                                   fecha.date(), fecha.time()])
+                                   fecha.date(), fecha.time()],
+                                  contador=i_imagen, valor_max=len(lista_ciencia))
 
             # Buscamos el Bias
             # Seleccionamos los que coinciden con el tamaño teorico
@@ -1123,7 +1126,8 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
             else:
                 relleno_b = 680
                 print('No se han encontrado bias de esa forma, se genera uno artificial.')
-                bias_asociado = np.full((naxis2_ciencia, naxis1_ciencia), relleno_b, dtype=float)
+                # ToDo: Cuando generamos uno, habrá que multiplicar por (binning_1 * binning_2), no?
+                bias_asociado = np.full((naxis1_ciencia, naxis2_ciencia), relleno_b, dtype=float)
 
             # Buscamos el Flat
             # Seleccionamos los que coinciden con el tamaño teorico
@@ -1137,8 +1141,7 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
             fechasjd_f = abs(dataf.julian.values - tiempo.jd)
             if len(fechasjd_f) > 0:
                 pos_min = np.argmin(fechasjd_f)
-                nombre_flat_buscado = dataf[dataf.noche.values == noche].iloc[0]['nombre_archivo']
-
+                nombre_flat_buscado = dataf.iloc[pos_min]['nombre_archivo']
                 if dataf.iloc[pos_min]['noche'] != noche:
                     print('Existe un Flat, pero no es de esta noche.')
                 flat_asociado = fits.getdata(dir_flats + nombre_flat_buscado, ext=0)
@@ -1146,7 +1149,7 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
             else:
                 relleno_f = 1
                 print('No se han encontrado flats, se genera uno artificialmente.')
-                flat_asociado = np.full((naxis2_ciencia, naxis1_ciencia), relleno_f, dtype=float)
+                flat_asociado = np.full((naxis1_ciencia, naxis2_ciencia), relleno_f, dtype=float)
 
             # Obtenemos la información de la imagen de ciencia
             image_data = fits.getdata(nombre_ciencia, ext=0)
@@ -1157,6 +1160,14 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
                 print('Recortamos los datos')
                 image_data = image_data[y_1:y_2, x_1:x_2]
 
+            print(cabecera['Biassec'])
+            print(cabecera['datasec'])
+            print(cabecera['ccdsec'])
+            print(binning)
+            print(image_data.shape)
+            print(bias_asociado.shape)
+            print(flat_asociado.shape)
+            # ToDo: Cuando hay binning y sale impar, hay que sumarle uno?
             ##############################################################################
             reducido_datos = (image_data - bias_asociado) / flat_asociado
             ##############################################################################
@@ -1182,7 +1193,7 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
 
             imagenes_reducidas_noche += 1
 
-            # ToDo: Hay que hacer un dataframe aparte con todas las imagenes de ciencia recortadas!
+            # ToDo: Hay que hacer un dataframe aparte con todas las imagenes de ciencia recortadas que se van formando
 
         # Al final de cada noche se hace el recuento
         no_existen.append(no_existe)
@@ -1307,6 +1318,13 @@ def main():
 
     args = parser.parse_args()
 
+    if args.verbose:
+        verbosidad = 2
+    elif args.quiet:
+        verbosidad = 0
+    else:
+        verbosidad = 1
+
     # Comprobamos si queremos/hace falta calcular los bias/flats
     print('bias:', args.nobias, args.sibias)
     realizarbias = decidir_repetir_calculos(args.nobias, args.sibias, 'bias', args.dir_dataf, args.dir_bias)
@@ -1320,7 +1338,7 @@ def main():
 
     # Separamos entre calibración y ciencia
     crear_listas_cal_y_sci(lista_noches, args.dir_listas, args.dir_datos, desc_bias, desc_flats, desc_arc,
-                           args.verbose, args.calysci)
+                           verbosidad, args.calysci)
     tiempo_listas = time.time()
 
     print(args.nobias, args.noflat, args.noreducc)
@@ -1332,7 +1350,7 @@ def main():
     # Creamos los Master Biases
     if realizarbias:
         df_bias = realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
-                                         args.verbose, args.interactive, args.recortar)
+                                         verbosidad, args.interactive, args.recortar)
         numero_bias = len(os.listdir(args.dir_bias))
         print(df_bias)
         _ = df_bias.to_csv('df_bias.csv', index=None, header=True)
@@ -1348,7 +1366,7 @@ def main():
     if realizarflat:
         df_flat = realizar_master_flats(lista_noches, lista_bias,
                                         args.dir_listas, args.dir_datos, args.dir_bias, args.dir_flats,
-                                        args.verbose, args.interactive)
+                                        verbosidad, args.interactive)
         numero_flats = len(os.listdir(args.dir_flats))
         print(df_flat)
         _ = df_flat.to_csv('df_flat.csv', index=None, header=True)
@@ -1362,7 +1380,7 @@ def main():
     # Juntamos todos los procesos y relizamos la reducción
     if args.noreducc:
         numeros_reducidos = realizar_reduccion(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
-                                               args.dir_flats, args.dir_reducc, df_bias, df_flat, args.verbose)
+                                               args.dir_flats, args.dir_reducc, df_bias, df_flat, verbosidad)
     else:
         numeros_reducidos = '-'
     tiempo_reducc = time.time()
