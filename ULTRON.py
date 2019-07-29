@@ -209,8 +209,8 @@ def obtener_bias(dir_bias_, noche, lista_noches, lista_bias, x1, x2, y1, y2, b1,
     else:
         if verbose:
             print('No hay bias cercanos validos. Se ha generado uno.')
-        naxis1_expected = int((y2 - y1 + 1) / b2)
-        naxis2_expected = int((x2 - x1 + 1) / b1)
+        naxis1_expected, naxis2_expected = sacar_naxis((x1, x2, y1, y2), b2, b1)
+
         bias_asociado = np.full((naxis1_expected, naxis2_expected), relleno, dtype=float)
 
     return existe, bias_asociado_nombre, bias_asociado
@@ -284,8 +284,9 @@ def obtener_flats(dir_flats_, noche_, lista_noches, lista_flats, x1, x2, y1, y2,
         # flat_asociado = None
         # if flat_asociado is None:
         #     raise ValueError('No hay definido un valor por defecto para el flat')
-        naxis1_expected = int((y2 - y1 + 1) / b2)
-        naxis2_expected = int((x2 - x1 + 1) / b1)
+
+        naxis1_expected, naxis2_expected = sacar_naxis((x1, x2, y1, y2), b2, b1)
+
         flat_asociado = np.full((naxis1_expected, naxis2_expected), relleno, dtype=float)
 
     return existe, flat_asociado_nombre, flat_asociado
@@ -533,6 +534,23 @@ def slicing_data(slicing_push, size_da, size_mb):
     return s1, s2, s3, s4
 
 
+def obt_naxis(x2, x1, binn):
+    naxis = int((x2 - x1 + 1) / binn)
+    if (x2 - x1 + 1) % binn != 0:
+        naxis += 1
+    return naxis
+
+
+def sacar_naxis(coordenadas_tupla, binn_1, binn_2=None):
+    if binn_2 is None:
+        binn_2 = binn_1
+
+    x1, x2, y1, y2 = deshacer_tupla_coord(coordenadas_tupla)
+
+    naxis1 = obt_naxis(y2, y1, binn_1)
+    naxis2 = obt_naxis(x2, x1, binn_2)
+
+    return naxis1, naxis2
 ########################################################################################################################
 
 
@@ -549,12 +567,7 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
         ccdbinx = bin_secciones_[seccion, 1]
         ccdbiny = bin_secciones_[seccion, 0]
 
-        naxis1_expected = int((coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) / ccdbinx)
-        naxis2_expected = int((coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) / ccdbiny)
-        if (coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) % ccdbinx != 0:
-            naxis1_expected += 1
-        if (coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) % ccdbiny != 0:
-            naxis2_expected += 1
+        naxis1_expected, naxis2_expected = sacar_naxis(coordenadas_dibujo, ccdbinx, ccdbiny)
 
         master_biases = np.zeros((secciones_count_[seccion],
                                   naxis1_expected,
@@ -637,27 +650,23 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
                                             x1, x2, y1, y2,
                                             ccdbinx, ccdbiny,
                                             nombre_archivo, noche,
-                                            tiempo, tiempo.jd,
-                                            fecha, fecha.date(), fecha.time()]],
+                                            tiempo, tiempo.jd]],
                                           columns=['Naxis1', 'Naxis2',
                                                    'x1', 'x2', 'y1', 'y2',
                                                    'Binning1', 'Binning2',
                                                    'nombre_archivo', 'noche',
-                                                   'tiempo_astropy', 'julian',
-                                                   'fecha', 'dia', 'hora'])
+                                                   'tiempo_astropy', 'julian'])
         else:
             elemento_lista_ = pd.DataFrame([[naxis1_expected, naxis2_expected,
                                             x1, x2, y1, y2,
                                             ccdbinx, ccdbiny,
                                             nombre_archivo, noche,
-                                            tiempo, tiempo.jd,
-                                            fecha, fecha.date(), fecha.time()]],
+                                            tiempo, tiempo.jd]],
                                            columns=['Naxis1', 'Naxis2',
                                                     'x1', 'x2', 'y1', 'y2',
                                                     'Binning1', 'Binning2',
                                                     'nombre_archivo', 'noche',
-                                                    'tiempo_astropy', 'julian',
-                                                    'fecha', 'dia', 'hora'])
+                                                    'tiempo_astropy', 'julian'])
             elemento_lista = pd.concat([elemento_lista, elemento_lista_], ignore_index=True)
 
     return elemento_lista
@@ -802,12 +811,8 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                     # no nos preocupamos y generamos las imagenes
                     ccdbiny = binning
                     ccdbinx = binning
-                    naxis1_expected = int((coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) / ccdbinx)
-                    naxis2_expected = int((coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) / ccdbiny)
-                    if (coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) % ccdbinx != 0:
-                        naxis1_expected += 1
-                    if (coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) % ccdbiny != 0:
-                        naxis2_expected += 1
+
+                    naxis1_expected, naxis2_expected = sacar_naxis(coordenadas_dibujo, ccdbinx, ccdbiny)
 
                     master_flats = np.zeros((filtros_count[filtro], naxis1_expected, naxis2_expected), dtype=float)
 
@@ -911,16 +916,14 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                                                         int(nombre_diccionario[filtro]),
                                                         free_grisma, numero_grisma,
                                                         nombre_archivo, noche,
-                                                        tiempo, tiempo.jd,
-                                                        fecha, fecha.date(), fecha.time()]],
+                                                        tiempo, tiempo.jd]],
                                                       columns=['Naxis1', 'Naxis2',
                                                                'x1', 'x2', 'y1', 'y2',
                                                                'Binning1', 'Binning2',
                                                                'filtro',
                                                                'free_grisma', 'num_grisma',
                                                                'nombre_archivo', 'noche',
-                                                               'tiempo_astropy', 'julian',
-                                                               'fecha', 'dia', 'hora'])
+                                                               'tiempo_astropy', 'julian'])
                     else:
                         elemento_lista_ = pd.DataFrame([[naxis1_expected, naxis2_expected,
                                                         x1, x2, y1, y2,
@@ -928,16 +931,14 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                                                         int(nombre_diccionario[filtro]),
                                                         free_grisma, numero_grisma,
                                                         nombre_archivo, noche,
-                                                        tiempo, tiempo.jd,
-                                                        fecha, fecha.date(), fecha.time()]],
+                                                        tiempo, tiempo.jd]],
                                                        columns=['Naxis1', 'Naxis2',
                                                                 'x1', 'x2', 'y1', 'y2',
                                                                 'Binning1', 'Binning2',
                                                                 'filtro',
                                                                 'free_grisma', 'num_grisma',
                                                                 'nombre_archivo', 'noche',
-                                                                'tiempo_astropy', 'julian',
-                                                                'fecha', 'dia', 'hora'])
+                                                                'tiempo_astropy', 'julian'])
                         elemento_lista = pd.concat([elemento_lista, elemento_lista_], ignore_index=True)
 
             else:
@@ -1041,20 +1042,14 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
             binning = bin_secc[indice_secc[imagen]]
             naxis1_r = cabecera['Naxis1']
             naxis2_r = cabecera['Naxis2']
-            # ToDo: realmente es la parte entera?, o es que queremos recortar el último punto? redondear hacia arriba
-            naxis1_ciencia = int((y2 - y1 + 1) / binning[1])
-            if y2 - y1 + 1 % binning[1] != 0:
-                naxis1_ciencia += 1
-                # ToDo: hacer función para sacar naxis esperado, para que le sume 1 cuando haga falta
-            naxis2_ciencia = int((x2 - x1 + 1) / binning[0])
-            if x2 - x1 + 1 % binning[0] != 0:
-                naxis2_ciencia += 1
+
+            naxis1_ciencia, naxis2_ciencia = sacar_naxis((x1, x2, y1, y2), binning[1], binning[0])
 
             # Comprobamos si hay overscan
             biassec = cabecera['BIASSEC']
             coordenadas_biassec = sacar_coordenadas_ccd(biassec)
-            naxis1_overscan = int((coordenadas_biassec[3] - coordenadas_biassec[2] + 1) / binning[1])
-            naxis2_overscan = int((coordenadas_biassec[1] - coordenadas_biassec[0] + 1) / binning[0])
+            naxis1_overscan, naxis2_overscan = sacar_naxis(coordenadas_biassec, binning[1], binning[0])
+
             if coordenadas_biassec[0] == 0 and coordenadas_biassec[1] == 0:
                 overscan = False
                 x_1, x_2, y_1, y_2 = None, None, None, None
@@ -1172,10 +1167,9 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
             print(image_data.shape)
             print(bias_asociado.shape)
             print(flat_asociado.shape)
-            # ToDo: Cuando hay binning y sale impar, hay que sumarle uno?
+
             # ToDo: Añadir al header de la imagen resultante el history de lo que ha pasado. 'add_history'
-            # ToDo: Quitar de los dataframes las apariciones adicionales de la fecha. ya está una vez con atropy.
-            #  (dejar juliana)
+
             ##############################################################################
             reducido_datos = (image_data - bias_asociado) / flat_asociado
             ##############################################################################
