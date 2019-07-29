@@ -349,8 +349,9 @@ def crear_lista_unicos(dir_datos, noche, lista_cosas, cabecera, binning=False, n
             if lista[i] == lista_unicas[j]:
                 indice_cosas[i] = j
                 if binning:
-                    bin_secciones[j, 0] = int(fits.open(dir_datos + noche + '/' + lista_cosas[i])[0].header['crpix2'])
-                    bin_secciones[j, 1] = int(fits.open(dir_datos + noche + '/' + lista_cosas[i])[0].header['crpix1'])
+                    # ToDo: comprobar que sigue funcionando
+                    bin_secciones[j, 0] = int(fits.open(dir_datos + noche + '/' + lista_cosas[i])[0].header['ccdbinX'])
+                    bin_secciones[j, 1] = int(fits.open(dir_datos + noche + '/' + lista_cosas[i])[0].header['ccdbinY'])
                 if nombre_filtro:
                     nombres_filtros.append(fits.open(dir_datos + noche + '/' + lista_cosas[i])[0].header['INSFLNAM'])
                 break
@@ -545,14 +546,14 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
         x1, x2, y1, y2 = deshacer_tupla_coord(coordenadas_dibujo)
 
         # Sacar el Binning
-        crpix1 = bin_secciones_[seccion, 1]
-        crpix2 = bin_secciones_[seccion, 0]
+        ccdbinx = bin_secciones_[seccion, 1]
+        ccdbiny = bin_secciones_[seccion, 0]
 
-        naxis1_expected = int((coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) / crpix1)
-        naxis2_expected = int((coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) / crpix2)
-        if (coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) % crpix1 != 0:
+        naxis1_expected = int((coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) / ccdbinx)
+        naxis2_expected = int((coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) / ccdbiny)
+        if (coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) % ccdbinx != 0:
             naxis1_expected += 1
-        if (coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) % crpix2 != 0:
+        if (coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) % ccdbiny != 0:
             naxis2_expected += 1
 
         master_biases = np.zeros((secciones_count_[seccion],
@@ -601,10 +602,10 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
         # plt.imshow(master_bias_colapsado)
         # ImP.imgdibujar(master_bias_colapsado, verbose_=1)
         nombre_archivo = noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}.fits".format(x1, x2, y1, y2,
-                                                                                                 crpix1, crpix2)
+                                                                                                 ccdbinx, ccdbiny)
 
-        mostrarresultados(['N', 'Crpix2', 'Crpix1', 'A', 'B', '-1'],
-                          [len(indice_seccion_[indice_seccion_ == seccion]), crpix2, crpix1,
+        mostrarresultados(['N', 'ccdbinY', 'ccbinX', 'A', 'B', '-1'],
+                          [len(indice_seccion_[indice_seccion_ == seccion]), ccdbiny, ccdbinx,
                            naxis1_expected, naxis2_expected, nombre_archivo],
                           titulo='Bias Realizado')
 
@@ -634,7 +635,7 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
         if elemento_lista is None:
             elemento_lista = pd.DataFrame([[naxis1_expected, naxis2_expected,
                                             x1, x2, y1, y2,
-                                            crpix1, crpix2,
+                                            ccdbinx, ccdbiny,
                                             nombre_archivo, noche,
                                             tiempo, tiempo.jd,
                                             fecha, fecha.date(), fecha.time()]],
@@ -647,7 +648,7 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
         else:
             elemento_lista_ = pd.DataFrame([[naxis1_expected, naxis2_expected,
                                             x1, x2, y1, y2,
-                                            crpix1, crpix2,
+                                            ccdbinx, ccdbiny,
                                             nombre_archivo, noche,
                                             tiempo, tiempo.jd,
                                             fecha, fecha.date(), fecha.time()]],
@@ -771,8 +772,8 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
             for i in range(len(lista_coincide)):
                 if indice_filtro[i] == filtro:
                     lista_actual.append(lista_coincide[i])
-                    binning2.append(int(fits.open(dir_datos_ + noche + '/' + lista_coincide[i])[0].header['crpix2']))
-                    binning1.append(int(fits.open(dir_datos_ + noche + '/' + lista_coincide[i])[0].header['crpix1']))
+                    binning2.append(int(fits.open(dir_datos_ + noche + '/' + lista_coincide[i])[0].header['ccdbinX']))
+                    binning1.append(int(fits.open(dir_datos_ + noche + '/' + lista_coincide[i])[0].header['ccdbinY']))
 
             # bin2_unique, bin2_count = np.unique(binning2, return_counts=True)
             bin1_unique, bin1_count = np.unique(binning1, return_counts=True)
@@ -799,13 +800,13 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
 
                     # Como tienen un solo bin y coinciden en los ejes (no se estira la imagen),
                     # no nos preocupamos y generamos las imagenes
-                    crpix2 = binning
-                    crpix1 = binning
-                    naxis1_expected = int((coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) / crpix1)
-                    naxis2_expected = int((coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) / crpix2)
-                    if (coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) % crpix1 != 0:
+                    ccdbiny = binning
+                    ccdbinx = binning
+                    naxis1_expected = int((coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) / ccdbinx)
+                    naxis2_expected = int((coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) / ccdbiny)
+                    if (coordenadas_dibujo[3] - coordenadas_dibujo[2] + 1) % ccdbinx != 0:
                         naxis1_expected += 1
-                    if (coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) % crpix2 != 0:
+                    if (coordenadas_dibujo[1] - coordenadas_dibujo[0] + 1) % ccdbiny != 0:
                         naxis2_expected += 1
 
                     master_flats = np.zeros((filtros_count[filtro], naxis1_expected, naxis2_expected), dtype=float)
@@ -819,8 +820,8 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                     # ToDo: Guardas las máscaras en una carpeta para que no haya que volver a hacerlas
                     # ToDo: Cronometrar crear la máscara con respecto a cargarla de disco
 
-                    mostrarresultados(['N', 'Crpix2', 'Crpix1', 'A', 'B'],
-                                      [len(lista_actual_bin), crpix2, crpix1,
+                    mostrarresultados(['N', 'ccdbiny', 'ccdbinx', 'A', 'B'],
+                                      [len(lista_actual_bin), ccdbiny, ccdbinx,
                                        naxis1_expected, naxis2_expected],
                                       titulo='Filtro ' + str(nombre_diccionario[filtro]))
 
@@ -840,7 +841,7 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
 
                     existe, bias_asociado_nombre, bias_asociado = obtener_bias(dir_bias_, noche, lista_noches,
                                                                                lista_bias, x1, x2, y1, y2,
-                                                                               crpix1, crpix2)
+                                                                               ccdbinx, ccdbiny)
 
                     for i in range(master_flats.shape[0]):
                         master_flats[i, :, :] = master_flats[i, :, :] - bias_asociado
@@ -887,7 +888,7 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                     # si pone nombre_diccionario[filtro] da el numero del diccionario del filtro
                     nombre_archivo = noche +\
                         "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}-F{6:03d}.fits"\
-                        .format(x1, x2, y1, y2, crpix1, crpix2, int(nombre_diccionario[filtro]))
+                        .format(x1, x2, y1, y2, ccdbinx, ccdbiny, int(nombre_diccionario[filtro]))
 
                     masterflats_header = cabecera.copy()
                     if masterflats_header['BLANK']:
@@ -906,7 +907,7 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                     if elemento_lista is None:
                         elemento_lista = pd.DataFrame([[naxis1_expected, naxis2_expected,
                                                         x1, x2, y1, y2,
-                                                        crpix1, crpix2,
+                                                        ccdbinx, ccdbiny,
                                                         int(nombre_diccionario[filtro]),
                                                         free_grisma, numero_grisma,
                                                         nombre_archivo, noche,
@@ -923,7 +924,7 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                     else:
                         elemento_lista_ = pd.DataFrame([[naxis1_expected, naxis2_expected,
                                                         x1, x2, y1, y2,
-                                                        crpix1, crpix2,
+                                                        ccdbinx, ccdbiny,
                                                         int(nombre_diccionario[filtro]),
                                                         free_grisma, numero_grisma,
                                                         nombre_archivo, noche,
@@ -1040,9 +1041,14 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
             binning = bin_secc[indice_secc[imagen]]
             naxis1_r = cabecera['Naxis1']
             naxis2_r = cabecera['Naxis2']
-            # ToDo: realmente es la parte entera?, o es que queremos recortar el último punto?
+            # ToDo: realmente es la parte entera?, o es que queremos recortar el último punto? redondear hacia arriba
             naxis1_ciencia = int((y2 - y1 + 1) / binning[1])
+            if y2 - y1 + 1 % binning[1] != 0:
+                naxis1_ciencia += 1
+                # ToDo: hacer función para sacar naxis esperado, para que le sume 1 cuando haga falta
             naxis2_ciencia = int((x2 - x1 + 1) / binning[0])
+            if x2 - x1 + 1 % binning[0] != 0:
+                naxis2_ciencia += 1
 
             # Comprobamos si hay overscan
             biassec = cabecera['BIASSEC']
@@ -1126,7 +1132,6 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
             else:
                 relleno_b = 680
                 print('No se han encontrado bias de esa forma, se genera uno artificial.')
-                # ToDo: Cuando generamos uno, habrá que multiplicar por (binning_1 * binning_2), no?
                 bias_asociado = np.full((naxis1_ciencia, naxis2_ciencia), relleno_b, dtype=float)
 
             # Buscamos el Flat
@@ -1168,6 +1173,9 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
             print(bias_asociado.shape)
             print(flat_asociado.shape)
             # ToDo: Cuando hay binning y sale impar, hay que sumarle uno?
+            # ToDo: Añadir al header de la imagen resultante el history de lo que ha pasado. 'add_history'
+            # ToDo: Quitar de los dataframes las apariciones adicionales de la fecha. ya está una vez con atropy.
+            #  (dejar juliana)
             ##############################################################################
             reducido_datos = (image_data - bias_asociado) / flat_asociado
             ##############################################################################
