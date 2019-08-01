@@ -629,6 +629,8 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
         # if masterbias_header['BLANK']:
         #     del masterbias_header['BLANK']
 
+        # ToDo añadir historia a la cabecera aquí BIAS
+
         masterbias_final = fits.PrimaryHDU(master_bias_colapsado.astype(np.float32), masterbias_header)
 
         masterbias_final.writeto(dir_bias_ + nombre_archivo, overwrite=True)
@@ -643,7 +645,6 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
 
         # Añadirlo a la tabla
         isot_time = masterbias_header['DATE']
-        fecha = str2datetime(isot_time)
         tiempo = Time(isot_time, format='isot', scale='utc')
         if elemento_lista is None:
             elemento_lista = pd.DataFrame([[naxis1_expected, naxis2_expected,
@@ -899,6 +900,8 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                     if masterflats_header['BLANK']:
                         del masterflats_header['BLANK']
 
+                    # ToDo: añadir aquí la historia de flat
+
                     if master_flats_colapsado is None:
                         raise ValueError('No se ha creado correctamente el flat colapsado')
                     masterflats_final = fits.PrimaryHDU(master_flats_colapsado.astype(np.float32), masterflats_header)
@@ -907,7 +910,6 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
 
                     # Añadirlo a la tabla
                     isot_time = masterflats_header['DATE']
-                    fecha = str2datetime(isot_time)
                     tiempo = Time(isot_time, format='isot', scale='utc')
                     if elemento_lista is None:
                         elemento_lista = pd.DataFrame([[naxis1_expected, naxis2_expected,
@@ -1013,6 +1015,7 @@ def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_b
 def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats, dir_reducc,
                        df_bias, df_flat, verbose=2):
     # Cargar listas
+    elemento_lista = None
     dic_filtro = cargar_json()
     no_existen = []
     imagenes_totales_de_ciencia = 0
@@ -1125,6 +1128,7 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
 
                 bias_asociado = fits.getdata(dir_bias + nombre_bias_buscado, ext=0)
             else:
+                nombre_bias_buscado = 'Ausente'
                 relleno_b = 680
                 print('No se han encontrado bias de esa forma, se genera uno artificial.')
                 bias_asociado = np.full((naxis1_ciencia, naxis2_ciencia), relleno_b, dtype=float)
@@ -1147,6 +1151,7 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
                 flat_asociado = fits.getdata(dir_flats + nombre_flat_buscado, ext=0)
 
             else:
+                nombre_flat_buscado = 'Ausente'
                 relleno_f = 1
                 print('No se han encontrado flats, se genera uno artificialmente.')
                 flat_asociado = np.full((naxis1_ciencia, naxis2_ciencia), relleno_f, dtype=float)
@@ -1188,6 +1193,8 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
                 mask = create_circular_mask(naxis1_ciencia, naxis2_ciencia)  # Se puede cambiar el centro y radio
                 reducido_datos[~mask] = 1
 
+            # ToDo añadir aquí la historia de reducido (qué bias, qué flat)
+
             # Guardamos la imagen
             reducido_final = fits.PrimaryHDU(reducido_datos.astype(np.float32), reducido_header)
 
@@ -1195,7 +1202,43 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
 
             imagenes_reducidas_noche += 1
 
-            # ToDo: Hay que hacer un dataframe aparte con todas las imagenes de ciencia recortadas que se van formando
+            ahora = datetime.datetime.now()
+            tiempo = Time(ahora, format='datetime', scale='utc')
+            if elemento_lista is None:
+                elemento_lista = pd.DataFrame([[naxis1_ciencia, naxis2_ciencia,
+                                                x1, x2, y1, y2,
+                                                binning[0], binning[1],
+                                                id_filtro,
+                                                free_grisma, numero_grisma,
+                                                'r_' + lista_ciencia[imagen],
+                                                nombre_bias_buscado, nombre_flat_buscado,
+                                                noche, tiempo, tiempo.jd]],
+                                              columns=['Naxis1', 'Naxis2',
+                                                       'x1', 'x2', 'y1', 'y2',
+                                                       'Binning1', 'Binning2',
+                                                       'filtro',
+                                                       'free_grisma', 'num_grisma',
+                                                       'nombre_archivo',
+                                                       'nombre bias', 'nombre flat'
+                                                       'noche', 'Fecha realizacion', 'julian'])
+            else:
+                elemento_lista_ = pd.DataFrame([[naxis1_ciencia, naxis2_ciencia,
+                                                 x1, x2, y1, y2,
+                                                 binning[0], binning[1],
+                                                 id_filtro,
+                                                 free_grisma, numero_grisma,
+                                                 'r_' + lista_ciencia[imagen],
+                                                 nombre_bias_buscado, nombre_flat_buscado,
+                                                 noche, tiempo, tiempo.jd]],
+                                               columns=['Naxis1', 'Naxis2',
+                                                        'x1', 'x2', 'y1', 'y2',
+                                                        'Binning1', 'Binning2',
+                                                        'filtro',
+                                                        'free_grisma', 'num_grisma',
+                                                        'nombre_archivo',
+                                                        'nombre bias', 'nombre flat'
+                                                        'noche', 'Fecha realizacion', 'julian'])
+                elemento_lista = pd.concat([elemento_lista, elemento_lista_], ignore_index=True)
 
         # Al final de cada noche se hace el recuento
         no_existen.append(no_existe)
@@ -1207,6 +1250,7 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
 
     mostrarresultados(lista_noches, no_existen)
     no_existen_2 = [0, 0]
+    _ = elemento_lista.to_csv('df_reducido.csv', index=None, header=True)
     for i in range(len(no_existen)):
         imagenes_totales_de_ciencia += no_existen[i][2]
         no_existen_2[0] += no_existen[i][0]
