@@ -426,28 +426,28 @@ def listas_archivos2(path_, desc_bias, desc_flats, desc_arc, verbose=False, caly
             tipo = fits.open(path_ + file)[0].header['IMAGETYP'].strip()
             if not fits.open(path_ + file)[0].header['OBJECT'] == 'Test':  # Comprobamos que no es un test
                 if tipo == 'BIAS' or tipo == 'bias':
-                    coincide = comprobar(path_ + file, desc_bias, verbose)
+                    coincide = comprobar(path_ + file, desc_bias, verbose=verbose)
                     if coincide:
                         lista_bias.append(file)
                     else:
                         lista_falla.append(file)
 
                 elif tipo == 'flat':
-                    coincide = comprobar(path_ + file, desc_flats, verbose)
+                    coincide = comprobar(path_ + file, desc_flats, verbose=verbose)
                     if coincide:
                         lista_flat.append(file)
                     else:
                         lista_falla.append(file)
 
                 elif tipo == 'arc':
-                    coincide = comprobar(path_ + file, desc_arc, verbose)
+                    coincide = comprobar(path_ + file, desc_arc, verbose=verbose)
                     if coincide:
                         lista_arc.append(file)
                     else:
                         lista_falla.append(file)
 
                 elif tipo == 'science':
-                    coincide = comprobar(path_ + file, desc_bias, desc_flats, desc_arc, verbose)
+                    coincide = comprobar(path_ + file, desc_bias, desc_flats, desc_arc, verbose=verbose)
                     if coincide:
                         lista_ciencia.append(file)
                     else:
@@ -629,7 +629,17 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
         # if masterbias_header['BLANK']:
         #     del masterbias_header['BLANK']
 
-        # ToDo añadir historia a la cabecera aquí BIAS
+        ahora = datetime.datetime.now()
+        ahora_dt = Time(ahora, format='datetime', scale='utc')
+        masterbias_header.add_history('Realizado Bias a partir de ' +
+                                      str(len(indice_seccion_[indice_seccion_ == seccion])) + ' imagenes. | ' +
+                                      str(ahora_dt)[:19])
+        numero_bias = 0
+        for bias_raw in range(len(lista_bias_)):
+            if indice_seccion_[bias_raw] == seccion:
+                numero_bias += 1
+                masterbias_header.add_history(str(numero_bias) + ': ' + lista_bias_[bias_raw])
+                print(str(numero_bias) + ': ' + lista_bias_[bias_raw])
 
         masterbias_final = fits.PrimaryHDU(master_bias_colapsado.astype(np.float32), masterbias_header)
 
@@ -900,7 +910,17 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                     if masterflats_header['BLANK']:
                         del masterflats_header['BLANK']
 
-                    # ToDo: añadir aquí la historia de flat
+                    ahora = datetime.datetime.now()
+                    ahora_dt = Time(ahora, format='datetime', scale='utc')
+                    masterflats_header.add_history('Realizado Flat a partir de ' +
+                                                   str(len(indice_seccion_[indice_seccion_ == seccion])) +
+                                                   ' imagenes. | ' + str(ahora_dt)[:19])
+                    numero_flats = 0
+                    for flat_raw in range(len(lista_flats_)):
+                        if indice_seccion_[flat_raw] == seccion:
+                            numero_flats += 1
+                            masterflats_header.add_history(str(numero_flats) + ': ' + lista_flats_[flat_raw])
+                            print(str(numero_flats) + ': ' + lista_flats_[flat_raw])
 
                     if master_flats_colapsado is None:
                         raise ValueError('No se ha creado correctamente el flat colapsado')
@@ -1021,7 +1041,7 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
     imagenes_totales_de_ciencia = 0
     imagenes_guardadas = 0
 
-    for noche in lista_noches[36:]:
+    for noche in lista_noches:
         imagenes_reducidas_noche = 0
         print(noche)
         if noche not in os.listdir(dir_reducc):
@@ -1165,16 +1185,6 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
                 print('Recortamos los datos')
                 image_data = image_data[y_1:y_2, x_1:x_2]
 
-            print(cabecera['Biassec'])
-            print(cabecera['datasec'])
-            print(cabecera['ccdsec'])
-            print(binning)
-            print(image_data.shape)
-            print(bias_asociado.shape)
-            print(flat_asociado.shape)
-
-            # ToDo: Añadir al header de la imagen resultante el history de lo que ha pasado. 'add_history'
-
             ##############################################################################
             reducido_datos = (image_data - bias_asociado) / flat_asociado
             ##############################################################################
@@ -1193,7 +1203,12 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
                 mask = create_circular_mask(naxis1_ciencia, naxis2_ciencia)  # Se puede cambiar el centro y radio
                 reducido_datos[~mask] = 1
 
-            # ToDo añadir aquí la historia de reducido (qué bias, qué flat)
+            ahora = datetime.datetime.now()
+            ahora_dt = Time(ahora, format='datetime', scale='utc')
+            reducido_header.add_history('Realizada la reduccion a partir de las siguientes imagenes: | ' +
+                                        str(ahora_dt)[:19])
+            reducido_header.add_history('Bias: ' + nombre_bias_buscado)
+            reducido_header.add_history('Flat: ' + nombre_flat_buscado)
 
             # Guardamos la imagen
             reducido_final = fits.PrimaryHDU(reducido_datos.astype(np.float32), reducido_header)
@@ -1219,7 +1234,7 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
                                                        'filtro',
                                                        'free_grisma', 'num_grisma',
                                                        'nombre_archivo',
-                                                       'nombre bias', 'nombre flat'
+                                                       'nombre bias', 'nombre flat',
                                                        'noche', 'Fecha realizacion', 'julian'])
             else:
                 elemento_lista_ = pd.DataFrame([[naxis1_ciencia, naxis2_ciencia,
@@ -1236,7 +1251,7 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
                                                         'filtro',
                                                         'free_grisma', 'num_grisma',
                                                         'nombre_archivo',
-                                                        'nombre bias', 'nombre flat'
+                                                        'nombre bias', 'nombre flat',
                                                         'noche', 'Fecha realizacion', 'julian'])
                 elemento_lista = pd.concat([elemento_lista, elemento_lista_], ignore_index=True)
 
@@ -1370,6 +1385,9 @@ def main():
         verbosidad = 0
     else:
         verbosidad = 1
+    print('verbosidad', verbosidad)
+
+    # ToDO: poner para mostrar imagenes, que no vaya por la verbosidad
 
     # Comprobamos si queremos/hace falta calcular los bias/flats
     print('bias:', args.nobias, args.sibias)
