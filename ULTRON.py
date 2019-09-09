@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import numpy.ma as ma
 import IMGPlot as ImP
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import os
 import csv
 import argparse
@@ -350,7 +350,6 @@ def crear_lista_unicos(dir_datos, noche, lista_cosas, cabecera, binning=False, n
             if lista[i] == lista_unicas[j]:
                 indice_cosas[i] = j
                 if binning:
-                    # ToDo: comprobar que sigue funcionando
                     bin_secciones[j, 0] = int(fits.open(dir_datos + noche + '/' + lista_cosas[i])[0].header['ccdbinX'])
                     bin_secciones[j, 1] = int(fits.open(dir_datos + noche + '/' + lista_cosas[i])[0].header['ccdbinY'])
                 if nombre_filtro:
@@ -556,7 +555,7 @@ def sacar_naxis(coordenadas_tupla, binn_1, binn_2=None):
 
 def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secciones_count_, indice_seccion_,
                          bin_secciones_, dir_bias_, dir_datos_, lista_bias_, verbose=0,
-                         interactive=False, recortar=False):
+                         interactive=False, recortar=False, verbose_imagen=False):
     elemento_lista = None
     for seccion in range(len(secciones_unicas_)):
         print('seccion: ' + str(seccion))
@@ -613,7 +612,9 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
         # print(master_bias_colapsado.shape)
         # print(master_bias_colapsado)
         # plt.imshow(master_bias_colapsado)
-        # ImP.imgdibujar(master_bias_colapsado, verbose_=1)
+        if verbose_imagen:
+            ImP.imgdibujar(master_bias_colapsado, verbose_=1)
+            plt.show()
         nombre_archivo = noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}.fits".format(x1, x2, y1, y2,
                                                                                                  ccdbinx, ccdbiny)
 
@@ -645,7 +646,7 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
 
         masterbias_final.writeto(dir_bias_ + nombre_archivo, overwrite=True)
 
-        if verbose >= 1:
+        if verbose_imagen:
             coord_lim = ImP.limites_imagen(*coordenadas_dibujo)
             ImP.imgdibujar(master_bias_colapsado, *coordenadas_dibujo, *coord_lim, verbose_=1)
 
@@ -683,7 +684,8 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
     return elemento_lista
 
 
-def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbose, interactive, recortar):
+def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbose, interactive, recortar,
+                           verbose_imagen=False):
     i_noche = 0
     df_bias = None
     for noche in lista_noches:
@@ -714,7 +716,8 @@ def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbos
 
         df_bias_ = juntar_imagenes_bias(noche, secciones_unicas, coordenadas_secciones, secciones_count,
                                         indice_seccion, bin_secciones, dir_bias, dir_datos, lista_bias,
-                                        verbose=verbose, interactive=interactive, recortar=recortar)
+                                        verbose=verbose, interactive=interactive, recortar=recortar,
+                                        verbose_imagen=verbose_imagen)
         if df_bias is None:
             df_bias = df_bias_
         else:
@@ -728,7 +731,7 @@ def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbos
 
 def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indice_seccion_,
                           dir_bias_, dir_datos_, dir_flats_, lista_flats_, lista_noches, lista_bias,
-                          verbose=0, interactive=False):
+                          verbose=0, interactive=False, verbose_imagen=False):
 
     # Cargamos Diccionario de Filtros
     dic_filtro = cargar_json()
@@ -833,9 +836,6 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
                     radius = 809  # con 810 tiene un pixel de borde
                     mask = create_circular_mask(naxis1_expected, naxis2_expected, center=center, radius=radius)
 
-                    # ToDo: Guardas las máscaras en una carpeta para que no haya que volver a hacerlas
-                    # ToDo: Cronometrar crear la máscara con respecto a cargarla de disco
-
                     mostrarresultados(['N', 'ccdbiny', 'ccdbinx', 'A', 'B'],
                                       [len(lista_actual_bin), ccdbiny, ccdbinx,
                                        naxis1_expected, naxis2_expected],
@@ -897,7 +897,9 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
 
                     # plt.imshow(master_flats_colapsado)
                     # plt.show()
-                    # ImP.imgdibujar(master_flats_colapsado)
+                    if verbose_imagen:
+                        ImP.imgdibujar(master_flats_colapsado)
+                        plt.show()
 
                     # Generamos el nombre del fichero del flat que se va a generar
                     # si tiene numero_filtro[filtro] da la posicion del filtro
@@ -977,7 +979,7 @@ def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indi
 
 
 def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_bias, dir_flats,
-                          verbose, interactive):
+                          verbose, interactive, verbose_imagen=False):
 
     """
     Función maestra para generar los master flats.
@@ -990,6 +992,7 @@ def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_b
     :param dir_flats:
     :param verbose:
     :param interactive:
+    :param verbose_imagen:
     :return:
     """
 
@@ -1020,7 +1023,7 @@ def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_b
 
         df_flat_ = juntar_imagenes_flats(noche, secciones_unicas, coordenadas_secciones, indice_seccion,
                                          dir_bias, dir_datos, dir_flats, lista_flats, lista_noches, lista_bias,
-                                         verbose=verbose, interactive=interactive)
+                                         verbose=verbose, interactive=interactive, verbose_imagen=verbose_imagen)
 
         if df_flat is None:
             df_flat = df_flat_
@@ -1033,7 +1036,7 @@ def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_b
 
 
 def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats, dir_reducc,
-                       df_bias, df_flat, verbose=2):
+                       df_bias, df_flat, verbose=2, verbose_imagen=False):
     # Cargar listas
     elemento_lista = None
     dic_filtro = cargar_json()
@@ -1118,7 +1121,7 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
             fecha = str2datetime(isot_time)
             tiempo = Time(isot_time, format='isot', scale='utc')
 
-            if verbose > 1:
+            if verbose > 0:
                 mostrarresultados(['noche', 'naxis1_r', 'naxis2_r', 'naxis1_c', 'naxis2_c',
                                    'x1', 'x2', 'y1', 'y2',
                                    'binning', 'filtro', 'id_filtro',
@@ -1144,13 +1147,15 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
                 pos_min = np.argmin(fechasjd_b)
                 nombre_bias_buscado = datat.iloc[pos_min]['nombre_archivo']
                 if datat.iloc[pos_min]['noche'] != noche:
-                    print('El bias mas cercano no es de esta noche.')
+                    if verbose > 1:
+                        print('El bias mas cercano no es de esta noche.')
 
                 bias_asociado = fits.getdata(dir_bias + nombre_bias_buscado, ext=0)
             else:
                 nombre_bias_buscado = 'Ausente'
                 relleno_b = 680
-                print('No se han encontrado bias de esa forma, se genera uno artificial.')
+                if verbose > 1:
+                    print('No se han encontrado bias de esa forma, se genera uno artificial.')
                 bias_asociado = np.full((naxis1_ciencia, naxis2_ciencia), relleno_b, dtype=float)
 
             # Buscamos el Flat
@@ -1167,7 +1172,8 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
                 pos_min = np.argmin(fechasjd_f)
                 nombre_flat_buscado = dataf.iloc[pos_min]['nombre_archivo']
                 if dataf.iloc[pos_min]['noche'] != noche:
-                    print('Existe un Flat, pero no es de esta noche.')
+                    if verbose > 1:
+                        print('Existe un Flat, pero no es de esta noche.')
                 flat_asociado = fits.getdata(dir_flats + nombre_flat_buscado, ext=0)
 
             else:
@@ -1188,6 +1194,10 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
             ##############################################################################
             reducido_datos = (image_data - bias_asociado) / flat_asociado
             ##############################################################################
+
+            if verbose_imagen:
+                ImP.imgdibujar(reducido_datos)
+                plt.show()
 
             if reducido_header['BLANK']:
                 del reducido_header['BLANK']
@@ -1258,6 +1268,7 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
         # Al final de cada noche se hace el recuento
         no_existen.append(no_existe)
         imagenes_guardadas += imagenes_reducidas_noche
+        print('verbosidad reduccion', verbose)
         if verbose > 0:
             mostrarresultados(['Imagenes reducidas', 'Acumulado'], [imagenes_reducidas_noche, imagenes_guardadas],
                               titulo="Reduccion de Imagenes",
@@ -1335,7 +1346,7 @@ def decidir_repetir_calculos(norealizar, sirealizar, sujeto, dir_df, dir_sujetos
 def main():
 
     # ---------------Valores por defecto-------------------------------------------
-    default_dir_datos = '/media/enrique/TOSHIBA EXT/CAHA/CAFOS2017/'
+    default_dir_datos = '/media/enrique/TOSHIBA EXT/DataCAHA/CAFOS2017/'
     default_dir_bias = '/media/enrique/TOSHIBA EXT/CAHA/Biases/'
     default_dir_listas = '/media/enrique/TOSHIBA EXT/CAHA/Listas/'
     default_dir_flats = '/media/enrique/TOSHIBA EXT/CAHA/Flats/'
@@ -1359,6 +1370,7 @@ def main():
     parser.add_argument("-dl", "--dir_listas", default=default_dir_listas, type=str, help='Lists Directory')
     parser.add_argument("-de", "--dir_reducc", default=default_dir_reduccion, type=str, help='Reducction Directory')
     parser.add_argument("-ddf", "--dir_dataf", default=default_dir_dataframe, type=str, help='DataFrame Directory')
+    parser.add_argument("-vi", "--verboseimage", action="store_true", help="Mostrar Imagenes")
     parser.add_argument('--cmap', type=str, help="Colormap", default='hot')
     parser.add_argument("-i", "--interactive", action="store_true")
     parser.add_argument("--recortar", action="store_true", help="Activar el recorte de imagenes")
@@ -1414,7 +1426,7 @@ def main():
     # Creamos los Master Biases
     if realizarbias:
         df_bias = realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
-                                         verbosidad, args.interactive, args.recortar)
+                                         verbosidad, args.interactive, args.recortar, verbose_imagen=args.verboseimage)
         numero_bias = len(os.listdir(args.dir_bias))
         print(df_bias)
         _ = df_bias.to_csv('df_bias.csv', index=None, header=True)
@@ -1430,7 +1442,7 @@ def main():
     if realizarflat:
         df_flat = realizar_master_flats(lista_noches, lista_bias,
                                         args.dir_listas, args.dir_datos, args.dir_bias, args.dir_flats,
-                                        verbosidad, args.interactive)
+                                        verbosidad, args.interactive, verbose_imagen=args.verboseimage)
         numero_flats = len(os.listdir(args.dir_flats))
         print(df_flat)
         _ = df_flat.to_csv('df_flat.csv', index=None, header=True)
@@ -1444,7 +1456,8 @@ def main():
     # Juntamos todos los procesos y relizamos la reducción
     if args.noreducc:
         numeros_reducidos = realizar_reduccion(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
-                                               args.dir_flats, args.dir_reducc, df_bias, df_flat, verbosidad)
+                                               args.dir_flats, args.dir_reducc, df_bias, df_flat,
+                                               verbosidad, verbose_imagen=args.verboseimage)
     else:
         numeros_reducidos = '-'
     tiempo_reducc = time.time()
