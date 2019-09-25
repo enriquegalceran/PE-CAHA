@@ -554,7 +554,7 @@ def sacar_naxis(coordenadas_tupla, binn_1, binn_2=None):
 
 
 def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secciones_count_, indice_seccion_,
-                         bin_secciones_, dir_bias_, dir_datos_, lista_bias_, verbose=0,
+                         bin_secciones_, dir_bias_, dir_datos_, lista_bias_,
                          interactive=False, recortar=False, verbose_imagen=False):
     elemento_lista = None
     for seccion in range(len(secciones_unicas_)):
@@ -684,7 +684,7 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
     return elemento_lista
 
 
-def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbose, interactive, recortar,
+def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, interactive, recortar,
                            verbose_imagen=False):
     i_noche = 0
     df_bias = None
@@ -716,7 +716,7 @@ def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, verbos
 
         df_bias_ = juntar_imagenes_bias(noche, secciones_unicas, coordenadas_secciones, secciones_count,
                                         indice_seccion, bin_secciones, dir_bias, dir_datos, lista_bias,
-                                        verbose=verbose, interactive=interactive, recortar=recortar,
+                                        interactive=interactive, recortar=recortar,
                                         verbose_imagen=verbose_imagen)
         if df_bias is None:
             df_bias = df_bias_
@@ -1399,8 +1399,6 @@ def main():
         verbosidad = 1
     print('verbosidad', verbosidad)
 
-    # ToDO: poner para mostrar imagenes, que no vaya por la verbosidad
-
     # Comprobamos si queremos/hace falta calcular los bias/flats
     print('bias:', args.nobias, args.sibias)
     realizarbias = decidir_repetir_calculos(args.nobias, args.sibias, 'bias', args.dir_dataf, args.dir_bias)
@@ -1426,7 +1424,7 @@ def main():
     # Creamos los Master Biases
     if realizarbias:
         df_bias = realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
-                                         verbosidad, args.interactive, args.recortar, verbose_imagen=args.verboseimage)
+                                         args.interactive, args.recortar, verbose_imagen=args.verboseimage)
         numero_bias = len(os.listdir(args.dir_bias))
         print(df_bias)
         _ = df_bias.to_csv('df_bias.csv', index=None, header=True)
