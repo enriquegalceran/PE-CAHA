@@ -21,7 +21,7 @@ def meter0(x, n):
     return x
 
 
-def stdrobusta(array, redondear=None):
+def stdrobust(array, redondear=None):
     salida = 0.7413 * (np.quantile(array.reshape(-1,), 0.75) - np.quantile(array.reshape(-1,), 0.25))
     if redondear:
         salida = np.round(salida, redondear)

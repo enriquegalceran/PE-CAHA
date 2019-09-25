@@ -1,5 +1,5 @@
 from astropy.io import fits
-from Salida_limpia import mostrarresultados, stdrobusta
+from Salida_limpia import mostrarresultados, stdrobust
 import numpy as np
 import IMGPlot as ImP
 import pandas as pd
@@ -13,7 +13,7 @@ import datetime
 
 def obtener_valores(image_data, header):
     valor_std = np.std(image_data)
-    valor_stdrob = stdrobusta(image_data)
+    valor_stdrob = stdrobust(image_data)
     valor_medio = np.mean(image_data)
     valor_mediana = np.median(image_data)
     rel_medio_mediana = (valor_medio - valor_mediana) / valor_mediana * 100

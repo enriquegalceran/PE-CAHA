@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.ma as ma
 import matplotlib.pyplot as plt
-from Salida_limpia import mostrarresultados, stdrobusta
+from Salida_limpia import mostrarresultados, stdrobust
 from astropy.io import fits
 import IMGPlot as ImP
 

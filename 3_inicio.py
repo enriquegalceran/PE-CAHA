@@ -1,5 +1,5 @@
 from astropy.io import fits
-from Salida_limpia import mostrarresultados, stdrobusta
+from Salida_limpia import mostrarresultados, stdrobust
 import numpy as np
 import IMGPlot as ImP
 # import pandas as pd
@@ -58,7 +58,7 @@ def crear_lista_unicos(dir_datos, noche, lista_cosas, cabecera='INSFLID', binnin
 def imagen_mas_probable(archivo):
     image_data = fits.getdata(archivo, ext=0)
     v_median = np.median(image_data)
-    v_sd = stdrobusta(image_data)
+    v_sd = stdrobust(image_data)
     if v_sd < 50 and v_median < 900:
         probable = 0  # Bias
     elif v_sd < 500:

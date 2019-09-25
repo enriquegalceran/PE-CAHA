@@ -9,7 +9,7 @@
 
 from astropy.io import fits
 from astropy.time import Time
-from Salida_limpia import mostrarresultados, stdrobusta
+from Salida_limpia import mostrarresultados, stdrobust
 import numpy as np
 import pandas as pd
 import numpy.ma as ma
@@ -24,116 +24,116 @@ import warnings
 import json
 
 
-def deshacer_tupla_coord(tupla):
+def tuple2coordinates(tupla):
     return tupla[0], tupla[1], tupla[2], tupla[3]
 
 
 def str2datetime(string):
-    salida = datetime.datetime.strptime(string, '%Y-%m-%dT%H:%M:%S')
-    return salida
+    output = datetime.datetime.strptime(string, '%Y-%m-%dT%H:%M:%S')
+    return output
 
 
-def guardar_listas_csv(csvfile, res):
+def save_file_csv(csvfile, res):
     with open(csvfile, "w") as output:
         writer = csv.writer(output, lineterminator='\n')
         for val in res:
             writer.writerow([val])
 
 
-def mostrar_diccionario(nombre_diccionario):
-    print("Mostramos el diccionario: ")
-    for x, y in nombre_diccionario.items():
+def show_dictionary(dictionary_name):
+    print("Showing dictionary: ")
+    for x, y in dictionary_name.items():
         print(x, y)
 
 
-def guardar_json(variable, filename):
+def save_json(variable, filename):
     json_f = json.dumps(variable, indent=2, sort_keys=True)
     f = open(filename, "w")
     f.write(json_f)
     f.close()
 
 
-def cargar_json(filename='Dic_filtro.json'):
+def load_json(filename='Dic_filtro.json'):
     with open(filename) as json_file:
         data = json.load(json_file)
     return data
 
 
-def conseguir_listas_archivos(path_):
-    listaarchivos = []
+def obtain_files_lists(path_):
+    file_list = []
     for file in os.listdir(path_):
         if file.endswith(".fits"):
-            listaarchivos.append(os.path.join(path_, file))
-    return listaarchivos
+            file_list.append(os.path.join(path_, file))
+    return file_list
 
 
-def leer_diccionario(nombre, diccionario_, filename='Dic_filtro.json'):
+def read_dictionary(name, dictionary_, filename='Dic_filtro.json'):
     """
     Busca en el diccionario el número del filtro buscado. Si no existe, crea uno nuevo
 
-    :param nombre:
-    :param diccionario_:
+    :param name:
+    :param dictionary_:
     :param filename:
     :return:
     """
-    if nombre in diccionario_:
-        return diccionario_[nombre]
+    if name in dictionary_:
+        return dictionary_[name]
     else:
-        len_dic = len(diccionario_)
-        diccionario_[nombre] = len_dic
-        print('Nueva entrada en el diccionario: Filtro {0} - Indice {1:03d}'.format(nombre, diccionario_[nombre]))
-        guardar_json(diccionario_, filename)
-        return diccionario_[nombre]
+        len_dic = len(dictionary_)
+        dictionary_[name] = len_dic
+        print('New dictionry entry: Filter {0} - Index {1:03d}'.format(name, dictionary_[name]))
+        save_json(dictionary_, filename)
+        return dictionary_[name]
 
 
-def sacar_coordenadas_ccd(imagen_, mypath_=False):
+def obtain_coordinates_ccd(image_, mypath_=False):
     """
-    Dado un string de texto en formato de CAFOS nos devuelve los valores x1, x2, y1 e y2.
+    Given a string following the CAFOS structure, obtains the coordinates of the ccd (x1, x2, y1 and y2) as a tuple.
 
-    :param imagen_:
+    :param image_:
     :param mypath_:
     :return:
     """
     if mypath_:
-        str_ccdsec = fits.open(mypath_ + imagen_)[0].header['CCDSEC']
+        str_ccdsec = fits.open(mypath_ + image_)[0].header['CCDSEC']
         longitud = len(str_ccdsec)
     else:
-        str_ccdsec = imagen_
+        str_ccdsec = image_
         longitud = len(str_ccdsec)+1
 
-    coma = None
+    comma = None
     for x in range(1, longitud):
         if str_ccdsec[x] == ',':
-            coma = x
+            comma = x
             break
-    if coma is None:
-        raise ValueError('coma not defined!')
+    if comma is None:
+        raise ValueError('comma not defined!')
 
-    puntos = None
-    for x in range(coma + 1, longitud):
+    colon = None
+    for x in range(comma + 1, longitud):
         if str_ccdsec[x] == ':':
-            puntos = x
+            colon = x
             break
-    if puntos is None:
-        raise ValueError('puntos not defined!')
+    if colon is None:
+        raise ValueError('colon not defined!')
 
     coma2 = None
-    for x in range(puntos + 1, longitud):
+    for x in range(colon + 1, longitud):
         if str_ccdsec[x] == ',':
             coma2 = x
             break
     if coma2 is None:
         raise ValueError('coma2 not defined!')
 
-    x1 = int(str_ccdsec[1:coma])
-    y1 = int(str_ccdsec[coma + 1: puntos])
-    x2 = int(str_ccdsec[puntos + 1: coma2])
+    x1 = int(str_ccdsec[1:comma])
+    y1 = int(str_ccdsec[comma + 1: colon])
+    x2 = int(str_ccdsec[colon + 1: coma2])
     y2 = int(str_ccdsec[coma2 + 1: -1])
     tupla_salida = (x1, x2, y1, y2)
     return tupla_salida
 
 
-def leer_lista(archivo):
+def read_list(archivo):
     with open(archivo, 'rt') as f:
         reader = csv.reader(f, delimiter=',')
         your_list = list(reader)
@@ -141,161 +141,163 @@ def leer_lista(archivo):
     return your_list
 
 
-def sacar_coordenadas_2(lista, idx):
+def obtain_coordinates_2(lista, idx):
     x1 = lista[idx, 0]
     x2 = lista[idx, 1]
     y1 = lista[idx, 2]
     y2 = lista[idx, 3]
-    tupla_salida = (x1, x2, y1, y2)
-    return tupla_salida
+    output_tuple = (x1, x2, y1, y2)
+    return output_tuple
 
 
-def obtener_bias(dir_bias_, noche, lista_noches, lista_bias, x1, x2, y1, y2, b1, b2,
-                 busqueda_max=10, relleno=680, verbose=False):
+def obtain_bias(dir_bias_, night, list_nights, list_bias, x1, x2, y1, y2, b1, b2,
+                max_search=10, fill_bias=680, verbose=False):
     """
-    Busca en la lista de bias disponibles si exite un archivo de bias para la misma noche en la que se hizo la foto.
-    Si exite, usará esa directamente. Si no existe, busca una imagen de bias diferente del mismo autor de noches
-    cercanas. Si no hay, genera un bias plano.
+    Searches the list of available bias for a bias with the same night the photo was taken. Also checks size nd binning.
+    If it finds such a bias, it will use that one directly. If it does not find one, it will look for a different bias
+    which fits the desired parametres for other nights. If there aren't any, it generates a flat bias.
 
     :param dir_bias_:
-    :param noche:
-    :param lista_noches:
-    :param lista_bias:
+    :param night:
+    :param list_nights:
+    :param list_bias:
     :param x1:
     :param x2:
     :param y1:
     :param y2:
     :param b1:
     :param b2:
-    :param busqueda_max:
-    :param relleno:
+    :param max_search:
+    :param fill_bias:
     :param verbose:
     :return:
     """
 
-    bias_asociado_nombre = dir_bias_ + noche +\
+    searched_bias_name = dir_bias_ + night +\
         "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}.fits".format(x1, x2, y1, y2, b1, b2)
-    existe = None
-    cogido_otro = False
-    if bias_asociado_nombre in lista_bias:
-        existe = True
+    exist = None
+    take_another = False
+    if searched_bias_name in list_bias:
+        exist = True
     else:
-        posicion = lista_noches.index(noche)
-        for i in range(1, busqueda_max):
+        position = list_nights.index(night)
+        for i in range(1, max_search):
             for mult in [-1, 1]:
-                indice = i * mult
-                pos_nueva = posicion + indice
-                if pos_nueva >= len(lista_noches):
-                    # Se ha llegado al final del año, y no busca para el año siguiente
+                indx = i * mult
+                position_new = position + indx
+                if position_new >= len(list_nights):
+                    # Reached end of the year. Doesn't search for next year. Can be fixed with a bigger folder and
+                    # placing every night in a same folder
                     break
-                noche = lista_noches[pos_nueva]
-                bias_asociado_nuevo = dir_bias_ + noche + \
+                night = list_nights[position_new]
+                searched_bias_new = dir_bias_ + night + \
                     "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}.fits"\
                     .format(x1, x2, y1, y2, b1, b2)
 
-                if bias_asociado_nuevo in lista_bias:
-                    bias_asociado_nombre = bias_asociado_nuevo
-                    existe = True
-                    cogido_otro = True
+                if searched_bias_new in list_bias:
+                    searched_bias_name = searched_bias_new
+                    exist = True
+                    take_another = True
 
-    if existe:
+    if exist:
         if verbose:
-            if cogido_otro:
-                print('Se ha cogido un bias de un dia diferente. El bias que se ha cogido es:')
-                print(bias_asociado_nombre)
+            if take_another:
+                print('Bias taken from another night. The taken bias is:')
+                print(searched_bias_name)
             else:
-                print('Existe el bias asociado')
-        bias_asociado = fits.getdata(bias_asociado_nombre, ext=0)
+                print('Bias exists.')
+        searched_bias = fits.getdata(searched_bias_name, ext=0)
     else:
         if verbose:
-            print('No hay bias cercanos validos. Se ha generado uno.')
-        naxis1_expected, naxis2_expected = sacar_naxis((x1, x2, y1, y2), b2, b1)
+            print('There are no nearby bias available. A filled bias has been generated.')
+        naxis1_expected, naxis2_expected = obtain_naxis((x1, x2, y1, y2), b2, b1)
 
-        bias_asociado = np.full((naxis1_expected, naxis2_expected), relleno, dtype=float)
+        searched_bias = np.full((naxis1_expected, naxis2_expected), fill_bias, dtype=float)
 
-    return existe, bias_asociado_nombre, bias_asociado
+    return exist, searched_bias_name, searched_bias
 
 
-def obtener_flats(dir_flats_, noche_, lista_noches, lista_flats, x1, x2, y1, y2, b1, b2,
-                  id_filtro_, busqueda_max=10, relleno=1, verbose=False):
+def obtain_flats(dir_flats_, night_, list_nights, list_flats, x1, x2, y1, y2, b1, b2, id_filter_, max_search=10,
+                 fill_flat=1, verbose=False):
     """
-        Busca en la lista de bias disponibles si exite un archivo de bias para la misma noche en la que se hizo la foto.
-        Si exite, usará esa directamente. Si no existe, busca una imagen de bias diferente del mismo autor de noches
-        cercanas. Si no hay, genera un bias plano.
+    Simillarly to obtain_bias, searches the list of available flats for a flat with the same night the photo was taken.
+    Also checks size nd binning. If it finds such a bias, it will use that one directly. If it does not find one, it
+    will look for a different bias which fits the desired parametres for other nights. If there aren't any, it generates
+    a flat bias.
 
     :param dir_flats_:
-    :param noche_:
-    :param lista_noches:
-    :param lista_flats:
+    :param night_:
+    :param list_nights:
+    :param list_flats:
     :param x1:
     :param x2:
     :param y1:
     :param y2:
     :param b1:
     :param b2:
-    :param id_filtro_:
-    :param busqueda_max:
-    :param relleno:
+    :param id_filter_:
+    :param max_search:
+    :param fill_flat:
     :param verbose:
     :return:
     """
 
-    flat_asociado_nombre = dir_flats_ + noche_ + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}-F{6:03d}.fits" \
-        .format(x1, x2, y1, y2, b1, b2, id_filtro_)
-    existe = False
-    cogido_otro = False
+    searched_flat_name = dir_flats_ + night_ + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}-F{6:03d}.fits" \
+        .format(x1, x2, y1, y2, b1, b2, id_filter_)
+    exist = False
+    take_another = False
 
-    if flat_asociado_nombre in lista_flats:
-        existe = True
+    if searched_flat_name in list_flats:
+        exist = True
     else:
-        posicion = lista_noches.index(noche_)
-        for i in range(1, busqueda_max):
-            if existe:
+        position = list_nights.index(night_)
+        for i in range(1, max_search):
+            if exist:
                 break
             for mult in [-1, 1]:
-                indice = i * mult
-                pos_nueva = posicion + indice
-                if pos_nueva >= len(lista_noches):
-                    # Se ha llegado al final del año, y no busca para el año siguiente
+                indx = i * mult
+                position_new = position + indx
+                if position_new >= len(list_nights):
+                    # Reached end of the year. Doesn't search for next year. Can be fixed with a bigger folder and
+                    # placing every night in a same folder
                     break
-                noche = lista_noches[pos_nueva]
-                flat_asociado_nuevo = dir_flats_ + noche + \
+                night_ = list_nights[position_new]
+                searched_flat_new = dir_flats_ + night_ + \
                     "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}-F{6:03d}.fits" \
-                    .format(x1, x2, y1, y2, b1, b2, id_filtro_)
+                    .format(x1, x2, y1, y2, b1, b2, id_filter_)
 
-                if flat_asociado_nuevo in lista_flats:
-                    flat_asociado_nombre = flat_asociado_nuevo
-                    existe = True
-                    cogido_otro = True
+                if searched_flat_new in list_flats:
+                    searched_flat_name = searched_flat_new
+                    exist = True
+                    take_another = True
                     break
 
-    if existe:
+    if exist:
         if verbose:
-            if cogido_otro:
-                print('Se ha cogido un flat de un dia diferente. El flat que se ha cogido es:')
-                print(flat_asociado_nombre)
+            if take_another:
+                print('Flat taken from another night. The taken flat is:')
+                print(searched_flat_name)
             else:
-                print('Existe el flat asociado')
-        flat_asociado = fits.getdata(flat_asociado_nombre, ext=0)
+                print('Flat exists.')
+        searched_flat = fits.getdata(searched_flat_name, ext=0)
     else:
         if verbose:
-            print('No hay flats cercanos validos. Se ha generado uno.')
+            print('There are no nearby flats available. A filled bias has been generated.')
 
-        # flat_asociado = None
-        # if flat_asociado is None:
+        # searched_flat = None
+        # if searched_flat is None:
         #     raise ValueError('No hay definido un valor por defecto para el flat')
 
-        naxis1_expected, naxis2_expected = sacar_naxis((x1, x2, y1, y2), b2, b1)
+        naxis1_expected, naxis2_expected = obtain_naxis((x1, x2, y1, y2), b2, b1)
 
-        flat_asociado = np.full((naxis1_expected, naxis2_expected), relleno, dtype=float)
+        searched_flat = np.full((naxis1_expected, naxis2_expected), fill_flat, dtype=float)
 
-    return existe, flat_asociado_nombre, flat_asociado
+    return exist, searched_flat_name, searched_flat
 
 
 def create_circular_mask(h, w, center=None, radius=None):
-
     """
-    Genera la mascara circular en función de la altura y anchura de la imagen además del centro y radio.
+    Generates a circular mask based on height, width, centre and radius of an image.
 
     :param h:
     :param w:
@@ -316,53 +318,53 @@ def create_circular_mask(h, w, center=None, radius=None):
     return mask
 
 
-def crear_lista_unicos(dir_datos, noche, lista_cosas, cabecera, binning=False, nombre_filtro=False):
+def create_unique_list(dir_data, night, stuff_list, header, binning=False, filter_name=False):
 
     """
-    Dado una lista de parámetros, genera una serie de listas:
-        - Lista de archivos
-        - Lista de valores únicos (sin repetidos)
-        - Para cada valor único, las instancias que se repiten
-        - Para cada elemento de la lista, genera un índice de a cual de ĺos valores únicos pertenece
-        - Si se pide, la cantidad de secciones que tiene
-        - Si se pide, el nombre de los filtros en cuestión
+    Given a list of parameter, generates a series of lists:
+        - List of files
+        - List of unique values
+        - For each value, how many times it appears
+        - For every element of the list, generates a value of which 'unique value' appears
+        - How many unique values does it have
+        - Name of filter, if applicable
 
-    :param dir_datos:
-    :param noche:
-    :param lista_cosas:
-    :param cabecera:
+    :param dir_data:
+    :param night:
+    :param stuff_list:
+    :param header:
     :param binning:
-    :param nombre_filtro:
+    :param filter_name:
     :return:
     """
     lista = []
 
-    for imagen in lista_cosas:
-        lista.append(fits.open(dir_datos + noche + '/' + imagen)[0].header[cabecera])
-    lista_unicas, lista_count = np.unique(lista, return_counts=True)  # Contamos secciones unicas
+    for image in stuff_list:
+        lista.append(fits.open(dir_data + night + '/' + image)[0].header[header])
+    unique_list, count_list = np.unique(lista, return_counts=True)  # Counting each list
 
-    bin_secciones = -1 * np.ones((len(lista_unicas), 2), dtype=int)
-    indice_cosas = np.zeros(len(lista_cosas), dtype=int)
-    nombres_filtros = []
+    bin_sections = -1 * np.ones((len(unique_list), 2), dtype=int)
+    indx_stuff = np.zeros(len(stuff_list), dtype=int)
+    name_filter = []
 
-    for i in range(len(lista_cosas)):
-        for j in range(len(lista_unicas)):
-            if lista[i] == lista_unicas[j]:
-                indice_cosas[i] = j
+    for i in range(len(stuff_list)):
+        for j in range(len(unique_list)):
+            if lista[i] == unique_list[j]:
+                indx_stuff[i] = j
                 if binning:
-                    bin_secciones[j, 0] = int(fits.open(dir_datos + noche + '/' + lista_cosas[i])[0].header['ccdbinX'])
-                    bin_secciones[j, 1] = int(fits.open(dir_datos + noche + '/' + lista_cosas[i])[0].header['ccdbinY'])
-                if nombre_filtro:
-                    nombres_filtros.append(fits.open(dir_datos + noche + '/' + lista_cosas[i])[0].header['INSFLNAM'])
+                    bin_sections[j, 0] = int(fits.open(dir_data + night + '/' + stuff_list[i])[0].header['ccdbinX'])
+                    bin_sections[j, 1] = int(fits.open(dir_data + night + '/' + stuff_list[i])[0].header['ccdbinY'])
+                if filter_name:
+                    name_filter.append(fits.open(dir_data + night + '/' + stuff_list[i])[0].header['INSFLNAM'])
                 break
 
-    return lista, lista_unicas, lista_count, indice_cosas, bin_secciones, nombres_filtros
+    return lista, unique_list, count_list, indx_stuff, bin_sections, name_filter
 
 
-def imagen_mas_probable(archivo):
+def most_probable_image(archivo):
     image_data = fits.getdata(archivo, ext=0)
     v_median = np.median(image_data)
-    v_sd = stdrobusta(image_data)
+    v_sd = stdrobust(image_data)
     if v_sd < 50 and v_median < 900:
         probable = 0  # Bias
     elif v_sd < 500:
@@ -373,43 +375,43 @@ def imagen_mas_probable(archivo):
     return probable
 
 
-def comprobar(archivo, descriptor, descriptor2=None, descriptor3=None, verbose=False):
+def checking(file_, descriptor, descriptor2=None, descriptor3=None, verbose=False):
     if any([descriptor2, descriptor3]):
         descriptortemp = descriptor + descriptor2 + descriptor3
-        coincide = True
+        coincides = True
         for texto in descriptortemp:
-            if texto in fits.open(archivo)[0].header['OBJECT']:
-                # Alguno coincide, no es ciencia
-                coincide = False
+            if texto in fits.open(file_)[0].header['OBJECT']:
+                # Some coincide without being science images
+                coincides = False
                 break
     else:
-        coincide = False
+        coincides = False
         for texto in descriptor:
-            if texto in fits.open(archivo)[0].header['OBJECT']:
-                # Sale bien
-                coincide = True
+            if texto in fits.open(file_)[0].header['OBJECT']:
+                # Both are the same
+                coincides = True
                 break
     if verbose:
-        print(archivo, fits.open(archivo)[0].header['OBJECT'], fits.open(archivo)[0].header['imagetyp'], coincide)
+        print(file_, fits.open(file_)[0].header['OBJECT'], fits.open(file_)[0].header['imagetyp'], coincides)
 
-    # Quiza meterle algo de que si object=test que lo ignore
+    # Maybe add something that checks for test
 
-    return coincide
+    return coincides
 
 
-def listas_archivos2(path_, desc_bias, desc_flats, desc_arc, verbose=False, calysci=True):
+def file_list_2(path_, desc_bias, desc_flats, desc_arc, verbose=False, calysci=True):
     lista_cal = []
     lista_sci = []
     lista_misc = []
     lista_bias = []
     lista_flat = []
-    lista_ciencia = []
+    lista_science = []
     lista_arc = []
     lista_else = []
-    listaarchivos = []
-    lista_falla = []
+    lista_files = []
+    lista_wrong = []
 
-    # Miramos todos los archivos dentro de la carpeta
+    # Listing every file in the folder
     for file in os.listdir(path_):
         if file.endswith(".fits"):
             if calysci:
@@ -419,49 +421,49 @@ def listas_archivos2(path_, desc_bias, desc_flats, desc_arc, verbose=False, caly
                     lista_sci.append(file)
                 else:
                     lista_misc.append(file)
-            listaarchivos.append(os.path.join(path_, file))
+            lista_files.append(os.path.join(path_, file))
 
-            # Separamos segun IMAGETYP
-            tipo = fits.open(path_ + file)[0].header['IMAGETYP'].strip()
-            if not fits.open(path_ + file)[0].header['OBJECT'] == 'Test':  # Comprobamos que no es un test
-                if tipo == 'BIAS' or tipo == 'bias':
-                    coincide = comprobar(path_ + file, desc_bias, verbose=verbose)
-                    if coincide:
+            # Splitting by IMAGETYP
+            types = fits.open(path_ + file)[0].header['IMAGETYP'].strip()
+            if not fits.open(path_ + file)[0].header['OBJECT'] == 'Test':  # Check it's not a test file
+                if types == 'BIAS' or types == 'bias':
+                    coincides = checking(path_ + file, desc_bias, verbose=verbose)
+                    if coincides:
                         lista_bias.append(file)
                     else:
-                        lista_falla.append(file)
+                        lista_wrong.append(file)
 
-                elif tipo == 'flat':
-                    coincide = comprobar(path_ + file, desc_flats, verbose=verbose)
-                    if coincide:
+                elif types == 'flat':
+                    coincides = checking(path_ + file, desc_flats, verbose=verbose)
+                    if coincides:
                         lista_flat.append(file)
                     else:
-                        lista_falla.append(file)
+                        lista_wrong.append(file)
 
-                elif tipo == 'arc':
-                    coincide = comprobar(path_ + file, desc_arc, verbose=verbose)
-                    if coincide:
+                elif types == 'arc':
+                    coincides = checking(path_ + file, desc_arc, verbose=verbose)
+                    if coincides:
                         lista_arc.append(file)
                     else:
-                        lista_falla.append(file)
+                        lista_wrong.append(file)
 
-                elif tipo == 'science':
-                    coincide = comprobar(path_ + file, desc_bias, desc_flats, desc_arc, verbose=verbose)
-                    if coincide:
-                        lista_ciencia.append(file)
+                elif types == 'science':
+                    coincides = checking(path_ + file, desc_bias, desc_flats, desc_arc, verbose=verbose)
+                    if coincides:
+                        lista_science.append(file)
                     else:
-                        lista_falla.append(file)
+                        lista_wrong.append(file)
 
                 else:
                     lista_else.append(file)
 
-    for file in lista_falla:
+    for file in lista_wrong:
 
         if calysci:
             if file in lista_sci:
-                lista_ciencia.append(file)
+                lista_science.append(file)
 
-        probable = imagen_mas_probable(path_ + file)
+        probable = most_probable_image(path_ + file)
 
         if probable == 0:
             lista_bias.append(file)
@@ -470,39 +472,35 @@ def listas_archivos2(path_, desc_bias, desc_flats, desc_arc, verbose=False, caly
         elif probable == 2:
             lista_flat.append(file)
 
-    return lista_bias, lista_flat, lista_arc, lista_ciencia, listaarchivos, lista_falla
+    return lista_bias, lista_flat, lista_arc, lista_science, lista_files, lista_wrong
 
 
-def crear_listas_cal_y_sci(lista_noches_, dir_listas_, dir_datos_, desc_bias, desc_flats, desc_arc, verbose, calysci):
+def create_list_cal_and_sci(lista_nights_, dir_lists_, dir_data_, desc_bias, desc_flats, desc_arc, verbose, calysci):
     i = 0
-    for noche in lista_noches_:
+    for night in lista_nights_:
         i += 1
-        if noche not in os.listdir(dir_listas_):
-            os.mkdir(dir_listas_ + noche + '/')
-            # Quiza hay que descomentar para que funcione
-            # CAL = []
-            # SCI = []
-            # MIS = []
-            # ARC = []
-            path_ = dir_datos_ + noche + '/'
-            l_bias, l_flat, l_arc, l_ciencia, l_archivos, l_falla = listas_archivos2(path_,
-                                                                                     desc_bias,
-                                                                                     desc_flats,
-                                                                                     desc_arc,
-                                                                                     verbose,
-                                                                                     calysci)
+        if night not in os.listdir(dir_lists_):
+            os.mkdir(dir_lists_ + night + '/')
+
+            path_ = dir_data_ + night + '/'
+            l_bias, l_flat, l_arc, l_ciencia, l_archivos, l_falla = file_list_2(path_,
+                                                                                desc_bias,
+                                                                                desc_flats,
+                                                                                desc_arc,
+                                                                                verbose,
+                                                                                calysci)
 
             mostrarresultados(['Bias', 'Flat', 'Arc', 'Ciencia', 'Falla'],
                               [len(l_bias), len(l_flat), len(l_arc), len(l_ciencia), len(l_falla)],
-                              titulo=noche, contador=i, valor_max=len(lista_noches_))
+                              titulo=night, contador=i, valor_max=len(lista_nights_))
 
-            # guardar_listas_csv(dir_listas_ + noche + '/' + 'CAL.csv', cal)
-            guardar_listas_csv(dir_listas_ + noche + '/' + 'SCI.csv', l_ciencia)
-            guardar_listas_csv(dir_listas_ + noche + '/' + 'ARC.csv', l_archivos)
-            guardar_listas_csv(dir_listas_ + noche + '/' + 'LBias.csv', l_bias)
-            guardar_listas_csv(dir_listas_ + noche + '/' + 'LFlat.csv', l_flat)
-            guardar_listas_csv(dir_listas_ + noche + '/' + 'LArc.csv', l_arc)
-            guardar_listas_csv(dir_listas_ + noche + '/' + 'Errores.csv', l_falla)
+            # save_file_csv(dir_lista_ + night + '/' + 'CAL.csv', cal)
+            save_file_csv(dir_lists_ + night + '/' + 'SCI.csv', l_ciencia)
+            save_file_csv(dir_lists_ + night + '/' + 'ARC.csv', l_archivos)
+            save_file_csv(dir_lists_ + night + '/' + 'LBias.csv', l_bias)
+            save_file_csv(dir_lists_ + night + '/' + 'LFlat.csv', l_flat)
+            save_file_csv(dir_lists_ + night + '/' + 'LArc.csv', l_arc)
+            save_file_csv(dir_lists_ + night + '/' + 'Errores.csv', l_falla)
 
 
 def add_to_file(file, what):
@@ -540,11 +538,11 @@ def obt_naxis(x2, x1, binn):
     return naxis
 
 
-def sacar_naxis(coordenadas_tupla, binn_1, binn_2=None):
+def obtain_naxis(coordenadas_tupla, binn_1, binn_2=None):
     if binn_2 is None:
         binn_2 = binn_1
 
-    x1, x2, y1, y2 = deshacer_tupla_coord(coordenadas_tupla)
+    x1, x2, y1, y2 = tuple2coordinates(coordenadas_tupla)
 
     naxis1 = obt_naxis(y2, y1, binn_1)
     naxis2 = obt_naxis(x2, x1, binn_2)
@@ -553,40 +551,40 @@ def sacar_naxis(coordenadas_tupla, binn_1, binn_2=None):
 ########################################################################################################################
 
 
-def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secciones_count_, indice_seccion_,
-                         bin_secciones_, dir_bias_, dir_datos_, lista_bias_,
-                         interactive=False, recortar=False, verbose_imagen=False):
-    elemento_lista = None
-    for seccion in range(len(secciones_unicas_)):
-        print('seccion: ' + str(seccion))
-        coordenadas_dibujo = sacar_coordenadas_2(coordenadas_secciones_, seccion)
-        x1, x2, y1, y2 = deshacer_tupla_coord(coordenadas_dibujo)
+def join_bias_images(night, unique_sections_, coordinates_sections_, sections_count_, indx_section_,
+                     bin_sections_, dir_bias_, dir_data_, list_bias_,
+                     interactive=False, cut_extra=False, verbose_imagen=False):
+    list_element = None
+    for section in range(len(unique_sections_)):
+        print('section: ' + str(section))
+        coordinates_image = obtain_coordinates_2(coordinates_sections_, section)
+        x1, x2, y1, y2 = tuple2coordinates(coordinates_image)
 
-        # Sacar el Binning
-        ccdbinx = bin_secciones_[seccion, 1]
-        ccdbiny = bin_secciones_[seccion, 0]
+        # Obtain Binning
+        ccdbinx = bin_sections_[section, 1]
+        ccdbiny = bin_sections_[section, 0]
 
-        naxis1_expected, naxis2_expected = sacar_naxis(coordenadas_dibujo, ccdbinx, ccdbiny)
+        naxis1_expected, naxis2_expected = obtain_naxis(coordinates_image, ccdbinx, ccdbiny)
 
-        master_biases = np.zeros((secciones_count_[seccion],
+        master_biases = np.zeros((sections_count_[section],
                                   naxis1_expected,
                                   naxis2_expected), dtype=float)
 
-        indice0 = 0
+        index0 = 0
         slicing_push = False
-        cabecera = None
-        for imagen in range(len(lista_bias_)):
-            if indice_seccion_[imagen] == seccion:
-                image_file = dir_datos_ + noche + '/' + lista_bias_[imagen]
+        header = None
+        for image in range(len(list_bias_)):
+            if indx_section_[image] == section:
+                image_file = dir_data_ + night + '/' + list_bias_[image]
                 image_data = fits.getdata(image_file, ext=0)
-                if image_data[:, :].shape == master_biases[indice0, :, :].shape:
-                    master_biases[indice0, :, :] = image_data[:, :]                     # Juntar
-                    if indice0 == 0:
-                        cabecera = fits.open(image_file)[0].header
+                if image_data[:, :].shape == master_biases[index0, :, :].shape:
+                    master_biases[index0, :, :] = image_data[:, :]                     # Juntar
+                    if index0 == 0:
+                        header = fits.open(image_file)[0].header
                 else:
-                    size_mb = master_biases[indice0, :, :].shape
+                    size_mb = master_biases[index0, :, :].shape
                     size_da = image_data[:, :].shape
-                    if recortar:
+                    if cut_extra:
                         if not slicing_push:
                             warnings.warn("Sizes Incompatible!")
                             print("Sizes incompatible:")
@@ -595,7 +593,7 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
                             slicing_push = (input("Slicing fits. "
                                                   "Select side towards to push (SW), SE, NE, NW: ") or "SW")
                         s1, s2, s3, s4 = slicing_data(slicing_push, size_da, size_mb)
-                        master_biases[indice0, :, :] = image_data[s1:s2, s3:s4]
+                        master_biases[index0, :, :] = image_data[s1:s2, s3:s4]
                     else:
                         warnings.warn("Sizes Incompatible!")
                         print("Sizes incompatible:")
@@ -605,389 +603,374 @@ def juntar_imagenes_bias(noche, secciones_unicas_, coordenadas_secciones_, secci
                         print("Consider using slicing with '--recortar'. ")
                         input("Press Enter to continue...")
                         break
-                indice0 += 1
+                index0 += 1
 
-        master_bias_colapsado = np.median(master_biases, axis=0)
-        # print(master_bias_colapsado)
-        # print(master_bias_colapsado.shape)
-        # print(master_bias_colapsado)
-        # plt.imshow(master_bias_colapsado)
+        master_bias_colapsed = np.median(master_biases, axis=0)
         if verbose_imagen:
-            ImP.imgdibujar(master_bias_colapsado, verbose_=1)
+            ImP.imgdibujar(master_bias_colapsed, verbose_=1)
             plt.show()
-        nombre_archivo = noche + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}.fits".format(x1, x2, y1, y2,
-                                                                                                 ccdbinx, ccdbiny)
+        file_name = night + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}.fits".format(x1, x2, y1, y2,
+                                                                                            ccdbinx, ccdbiny)
 
         mostrarresultados(['N', 'ccdbinY', 'ccbinX', 'A', 'B', '-1'],
-                          [len(indice_seccion_[indice_seccion_ == seccion]), ccdbiny, ccdbinx,
-                           naxis1_expected, naxis2_expected, nombre_archivo],
+                          [len(indx_section_[indx_section_ == section]), ccdbiny, ccdbinx,
+                           naxis1_expected, naxis2_expected, file_name],
                           titulo='Bias Realizado')
 
-        if cabecera is None:
+        if header is None:
             raise ValueError('No se ha creado correctamente la cabecera')
 
-        masterbias_header = cabecera.copy()
-        # if masterbias_header['BLANK']:
-        #     del masterbias_header['BLANK']
+        masterbias_header = header.copy()
 
         ahora = datetime.datetime.now()
         ahora_dt = Time(ahora, format='datetime', scale='utc')
         masterbias_header.add_history('Realizado Bias a partir de ' +
-                                      str(len(indice_seccion_[indice_seccion_ == seccion])) + ' imagenes. | ' +
+                                      str(len(indx_section_[indx_section_ == section])) + ' imagenes. | ' +
                                       str(ahora_dt)[:19])
         numero_bias = 0
-        for bias_raw in range(len(lista_bias_)):
-            if indice_seccion_[bias_raw] == seccion:
+        for bias_raw in range(len(list_bias_)):
+            if indx_section_[bias_raw] == section:
                 numero_bias += 1
-                masterbias_header.add_history(str(numero_bias) + ': ' + lista_bias_[bias_raw])
-                print(str(numero_bias) + ': ' + lista_bias_[bias_raw])
+                masterbias_header.add_history(str(numero_bias) + ': ' + list_bias_[bias_raw])
+                print(str(numero_bias) + ': ' + list_bias_[bias_raw])
 
-        masterbias_final = fits.PrimaryHDU(master_bias_colapsado.astype(np.float32), masterbias_header)
+        masterbias_final = fits.PrimaryHDU(master_bias_colapsed.astype(np.float32), masterbias_header)
 
-        masterbias_final.writeto(dir_bias_ + nombre_archivo, overwrite=True)
+        masterbias_final.writeto(dir_bias_ + file_name, overwrite=True)
 
         if verbose_imagen:
-            coord_lim = ImP.limites_imagen(*coordenadas_dibujo)
-            ImP.imgdibujar(master_bias_colapsado, *coordenadas_dibujo, *coord_lim, verbose_=1)
+            coord_lim = ImP.limites_imagen(*coordinates_image)
+            ImP.imgdibujar(master_bias_colapsed, *coordinates_image, *coord_lim, verbose_=1)
 
         if interactive:
-            # plt.show()
             input("Press Enter to continue...")
 
-        # Añadirlo a la tabla
+        # Add to table
         isot_time = masterbias_header['DATE']
-        tiempo = Time(isot_time, format='isot', scale='utc')
-        if elemento_lista is None:
-            elemento_lista = pd.DataFrame([[naxis1_expected, naxis2_expected,
-                                            x1, x2, y1, y2,
-                                            ccdbinx, ccdbiny,
-                                            nombre_archivo, noche,
-                                            tiempo, tiempo.jd]],
-                                          columns=['Naxis1', 'Naxis2',
-                                                   'x1', 'x2', 'y1', 'y2',
-                                                   'Binning1', 'Binning2',
-                                                   'nombre_archivo', 'noche',
-                                                   'tiempo_astropy', 'julian'])
+        time_ = Time(isot_time, format='isot', scale='utc')
+        if list_element is None:
+            list_element = pd.DataFrame([[naxis1_expected, naxis2_expected,
+                                          x1, x2, y1, y2,
+                                          ccdbinx, ccdbiny,
+                                          file_name, night,
+                                          time_, time_.jd]],
+                                        columns=['Naxis1', 'Naxis2',
+                                                 'x1', 'x2', 'y1', 'y2',
+                                                 'Binning1', 'Binning2',
+                                                 'nombre_archivo', 'noche',
+                                                 'tiempo_astropy', 'julian'])
         else:
-            elemento_lista_ = pd.DataFrame([[naxis1_expected, naxis2_expected,
-                                            x1, x2, y1, y2,
-                                            ccdbinx, ccdbiny,
-                                            nombre_archivo, noche,
-                                            tiempo, tiempo.jd]],
-                                           columns=['Naxis1', 'Naxis2',
-                                                    'x1', 'x2', 'y1', 'y2',
-                                                    'Binning1', 'Binning2',
-                                                    'nombre_archivo', 'noche',
-                                                    'tiempo_astropy', 'julian'])
-            elemento_lista = pd.concat([elemento_lista, elemento_lista_], ignore_index=True)
+            list_element_ = pd.DataFrame([[naxis1_expected, naxis2_expected,
+                                           x1, x2, y1, y2,
+                                           ccdbinx, ccdbiny,
+                                           file_name, night,
+                                           time_, time_.jd]],
+                                         columns=['Naxis1', 'Naxis2',
+                                                  'x1', 'x2', 'y1', 'y2',
+                                                  'Binning1', 'Binning2',
+                                                  'nombre_archivo', 'noche',
+                                                  'tiempo_astropy', 'julian'])
+            list_element = pd.concat([list_element, list_element_], ignore_index=True)
 
-    return elemento_lista
+    return list_element
 
 
-def realizar_master_biases(lista_noches, dir_listas, dir_datos, dir_bias, interactive, recortar,
-                           verbose_imagen=False):
+def make_master_bias(list_nights, dir_lists, dir_data, dir_bias, interactive, cut_reshape,
+                     verbose_imagen=False):
     i_noche = 0
     df_bias = None
-    for noche in lista_noches:
+    for night in list_nights:
         i_noche += 1
-        print('=== NOCHE ' + noche + ' - (' + str(i_noche) + '/' + str(len(lista_noches)) + ') ===')
+        print('=== NIGHT ' + night + ' - (' + str(i_noche) + '/' + str(len(list_nights)) + ') ===')
 
-        lista_bias = leer_lista(dir_listas + noche + '/' + 'LBias.csv')
+        list_bias = read_list(dir_lists + night + '/' + 'LBias.csv')
 
-        secciones, secciones_unicas, secciones_count, indice_seccion, bin_secciones, _ = crear_lista_unicos(
-            dir_datos, noche, lista_bias, cabecera='CCDSEC', binning=True
+        sections, unique_section, section_counting, section_index, bin_sections, _ = create_unique_list(
+            dir_data, night, list_bias, header='CCDSEC', binning=True
         )
 
-        # Variables:
-        # secciones_unicas: lista de STR con las diferentes configuraciones de CCD que se usan
-        # secciones_count: cuantas veces aparecen estas configuraciones
-        # secciones: lista completa de STR de las secciones. se usa de apoyo. Se puede borrar despues
-        # indice_seccion: INT con cual de las secciones pertenecen las calibraciones
-        # coordenadas_secciones: coordenadas de las dierentes secciones
-        # size-secciones: tamanyo de las imagenes en cada seccion
+        sections_coordinates = np.zeros((len(unique_section), 4), dtype=int)
+        for i in range(len(unique_section)):
+            unique_coordinates = obtain_coordinates_ccd(unique_section[i])
+            sections_coordinates[i, :] = [*unique_coordinates]
 
-        coordenadas_secciones = np.zeros((len(secciones_unicas), 4), dtype=int)
-        for i in range(len(secciones_unicas)):
-            coordenadas_unicas = sacar_coordenadas_ccd(secciones_unicas[i])
-            coordenadas_secciones[i, :] = [*coordenadas_unicas]
-
-        # for k in range(len(secciones_unicas)):
-        #     add_to_file('BiasSecciones.csv', secciones_unicas[k] + ';' + str(secciones_count[k]) + '\n')
-
-        df_bias_ = juntar_imagenes_bias(noche, secciones_unicas, coordenadas_secciones, secciones_count,
-                                        indice_seccion, bin_secciones, dir_bias, dir_datos, lista_bias,
-                                        interactive=interactive, recortar=recortar,
-                                        verbose_imagen=verbose_imagen)
+        df_bias_ = join_bias_images(night, unique_section, sections_coordinates, section_counting,
+                                    section_index, bin_sections, dir_bias, dir_data, list_bias,
+                                    interactive=interactive, cut_extra=cut_reshape,
+                                    verbose_imagen=verbose_imagen)
         if df_bias is None:
             df_bias = df_bias_
         else:
             df_bias = pd.concat([df_bias, df_bias_], ignore_index=True)
 
-        # print(df_bias)
-        # input('listo')
-
     return df_bias
 
 
-def juntar_imagenes_flats(noche, secciones_unicas_, coordenadas_secciones_, indice_seccion_,
-                          dir_bias_, dir_datos_, dir_flats_, lista_flats_, lista_noches, lista_bias,
-                          verbose=0, interactive=False, verbose_imagen=False):
+def join_flat_images(nights, unique_sections_, sections_coordinates_, indx_section_,
+                     dir_bias_, dir_data_, dir_flats_, list_flats_, list_nights_, lista_bias,
+                     verbose=0, interactive=False, verbose_images=False):
+    """
+    Combine multiple flats to create a master flat.
 
-    # Cargamos Diccionario de Filtros
-    dic_filtro = cargar_json()
-    elemento_lista = None
+    :param nights:
+    :param unique_sections_:
+    :param sections_coordinates_:
+    :param indx_section_:
+    :param dir_bias_:
+    :param dir_data_:
+    :param dir_flats_:
+    :param list_flats_:
+    :param list_nights_:
+    :param lista_bias:
+    :param verbose:
+    :param interactive:
+    :param verbose_images:
+    :return:
+    """
 
-    # Separamos por secciones para cada noche
-    for seccion in range(len(secciones_unicas_)):
-        print('seccion: ' + str(seccion))
-        coordenadas_dibujo = sacar_coordenadas_2(coordenadas_secciones_, seccion)
-        x1, x2, y1, y2 = deshacer_tupla_coord(coordenadas_dibujo)
+    # Load Dictionary File
+    dic_filter = load_json()
+    element_list = None
 
-        # Creamos una lista con todos aquellos que coinciden el indice
-        lista_coincide = []
-        for imagen in range(len(lista_flats_)):
-            if indice_seccion_[imagen] == seccion:
-                lista_coincide.append(lista_flats_[imagen])
+    # Splitting by night
+    for section in range(len(unique_sections_)):
+        print('section: ' + str(section))
+        coordinates_image = obtain_coordinates_2(sections_coordinates_, section)
+        x1, x2, y1, y2 = tuple2coordinates(coordinates_image)
 
-        filtros, filtros_unicos, filtros_count, indice_filtro, _, nombres_filtros = crear_lista_unicos(
-                                                                                      dir_datos_, noche,
-                                                                                      lista_coincide,
-                                                                                      cabecera='INSFLID',
-                                                                                      binning=False, nombre_filtro=True
-                                                                                      )
+        # Create a list with every one that fits the index
+        list_coincide = []
+        for image in range(len(list_flats_)):
+            if indx_section_[image] == section:
+                list_coincide.append(list_flats_[image])
 
-        # Creamos nombres_unicos
-        nombres_unicos = []
-        for i in range(len(filtros_unicos)):
-            for j in range(len(filtros)):
-                if filtros_unicos[i] == filtros[j]:
-                    nombres_unicos.append(nombres_filtros[j])
+        filters, unique_filters, filter_counts, indx_filter, _, name_filter = create_unique_list(
+            dir_data_, nights, list_coincide, header='INSFLID', binning=False, filter_name=True
+        )
+
+        # crete unique_names
+        unique_names = []
+        for i in range(len(unique_filters)):
+            for j in range(len(filters)):
+                if unique_filters[i] == filters[j]:
+                    unique_names.append(name_filter[j])
                     break
 
-        # Para cada elemento de nombres únicos, buscamos cual es el índice en el diccionario de filtros
-        nombre_diccionario = []
-        for i in nombres_unicos:
-            nombre_diccionario.append(leer_diccionario(i, dic_filtro))
+        # For each element of unique_names, we search it's intex in the dictionary
+        name_dictionary = []
+        for i in unique_names:
+            name_dictionary.append(read_dictionary(i, dic_filter))
 
-        # Esto sólo será necesario si NO hay grisma, luego miramos cual es el grima que le corresponde
-        numero_grisma = int(fits.open(dir_datos_ + noche + '/' + lista_coincide[0])[0]
+        # Only necessary if the ISN'T a grisma, so we search what it's grisma is being used
+        grisma_number = int(fits.open(dir_data_ + nights + '/' + list_coincide[0])[0]
                             .header['insgrid'].replace(' ', '0')[6:8])
 
-        if numero_grisma == 11:  # Si numero_grisma==11, entonces no hay grisma de por medio
+        if grisma_number == 11:  # If grisma_number==11, there is no grisma being used
             free_grisma = True
         else:
             free_grisma = False
 
-        # Queremos saber cual es el número del filtro usado (quizá se pueda quitar pues ahora se mira el nombre)
-        numero_filtro = np.zeros(len(filtros_unicos), dtype=int)
+        # We want to know what is the number of the filter used
+        filter_number = np.zeros(len(unique_filters), dtype=int)
         p = 0
-        for i in filtros_unicos:
-            numero_filtro[p] = int(i[-2:].strip())
+        for i in unique_filters:
+            filter_number[p] = int(i[-2:].strip())
             p += 1
 
-        # Ahora que hemos separado en función de la sección, Separamos por los filtros
-        for filtro in range(len(filtros_unicos)):
+        # Separated by sections, so we separate by filter
+        for filtro in range(len(unique_filters)):
             lista_actual = []
             binning2 = []
             binning1 = []
 
-            # Como no siempre mantienen constante los binnings, separamos por binnings
-            for i in range(len(lista_coincide)):
-                if indice_filtro[i] == filtro:
-                    lista_actual.append(lista_coincide[i])
-                    binning2.append(int(fits.open(dir_datos_ + noche + '/' + lista_coincide[i])[0].header['ccdbinX']))
-                    binning1.append(int(fits.open(dir_datos_ + noche + '/' + lista_coincide[i])[0].header['ccdbinY']))
+            # Binning is constant, so we split by different binning
+            for i in range(len(list_coincide)):
+                if indx_filter[i] == filtro:
+                    lista_actual.append(list_coincide[i])
+                    binning2.append(int(fits.open(dir_data_ + nights + '/' + list_coincide[i])[0].header['ccdbinX']))
+                    binning1.append(int(fits.open(dir_data_ + nights + '/' + list_coincide[i])[0].header['ccdbinY']))
 
-            # bin2_unique, bin2_count = np.unique(binning2, return_counts=True)
             bin1_unique, bin1_count = np.unique(binning1, return_counts=True)
 
-            siempre_coincide_binning = True
+            binning_always_coincide = True
             for i in range(len(lista_actual)):
                 if not binning2 == binning1:
-                    siempre_coincide_binning = False
+                    binning_always_coincide = False
                     break
-            # solo_un_caso_de_binning = all([len(bin1_unique) == 1, len(bin2_unique) == 1])
-            # if solo_un_caso_de_binning:  ############################################################################
 
-            # Si los binnings coinciden
-            master_flats_colapsado = None
+            # If binning coincide
+            master_flats_colapsed = None
 
-            if siempre_coincide_binning:
+            if binning_always_coincide:
                 for binning in bin1_unique:
                     lista_actual_bin = []
 
-                    # Ahora tenemos una lista con binnings individuales
+                    # We have a list with individual binnings
                     for i in range(len(lista_actual)):
                         if binning1[i] == binning:
                             lista_actual_bin.append(lista_actual[i])
 
-                    # Como tienen un solo bin y coinciden en los ejes (no se estira la imagen),
-                    # no nos preocupamos y generamos las imagenes
+                    # Only has one bin and it matches, it's axis (image isn't stretched),
+                    # we don't worry about it and generate the image
                     ccdbiny = binning
                     ccdbinx = binning
 
-                    naxis1_expected, naxis2_expected = sacar_naxis(coordenadas_dibujo, ccdbinx, ccdbiny)
+                    naxis1_expected, naxis2_expected = obtain_naxis(coordinates_image, ccdbinx, ccdbiny)
 
-                    master_flats = np.zeros((filtros_count[filtro], naxis1_expected, naxis2_expected), dtype=float)
+                    master_flats = np.zeros((filter_counts[filtro], naxis1_expected, naxis2_expected), dtype=float)
 
-                    # Generamos máscara
-                    center_real = [1075, 1040]
-                    center = [center_real[0] - x1, center_real[1] - y1]
+                    # Generate mask
+                    real_center = [1075, 1040]
+                    center = [real_center[0] - x1, real_center[1] - y1]
                     radius = 809  # con 810 tiene un pixel de borde
                     mask = create_circular_mask(naxis1_expected, naxis2_expected, center=center, radius=radius)
 
                     mostrarresultados(['N', 'ccdbiny', 'ccdbinx', 'A', 'B'],
                                       [len(lista_actual_bin), ccdbiny, ccdbinx,
                                        naxis1_expected, naxis2_expected],
-                                      titulo='Filtro ' + str(nombre_diccionario[filtro]))
+                                      titulo='Filtro ' + str(name_dictionary[filtro]))
 
-                    # Leemos para cada elemento de imágenes sus valores y los vamos acoplando
-                    indice0 = 0
-                    cabecera = fits.open(dir_datos_ + noche + '/' + lista_actual_bin[0])[0].header
-                    for imagen in range(len(lista_actual_bin)):
-                        image_file = dir_datos_ + noche + '/' + lista_actual_bin[imagen]
+                    # Read for each element their values and we concatenate
+                    index0 = 0
+                    header_ = fits.open(dir_data_ + nights + '/' + lista_actual_bin[0])[0].header
+                    for image in range(len(lista_actual_bin)):
+                        image_file = dir_data_ + nights + '/' + lista_actual_bin[image]
                         image_data = fits.getdata(image_file, ext=0)
 
-                        if image_data[:, :].shape == master_flats[indice0, :, :].shape:
-                            master_flats[indice0, :, :] = image_data[:, :]                  # Juntar
+                        if image_data[:, :].shape == master_flats[index0, :, :].shape:
+                            master_flats[index0, :, :] = image_data[:, :]                  # Juntar
                         else:
-                            print('hay un problema con el tamanyo de las imagenes')
-                            input('Pausado. Pulsa Enter para continuar...')
-                        indice0 += 1
+                            print('There is a problem with the image size')
+                            input('Pause. Press Enter to to continue...')
+                        index0 += 1
 
-                    existe, bias_asociado_nombre, bias_asociado = obtener_bias(dir_bias_, noche, lista_noches,
-                                                                               lista_bias, x1, x2, y1, y2,
-                                                                               ccdbinx, ccdbiny)
+                    exist, searched_bias_name, searched_bias = obtain_bias(
+                        dir_bias_, nights, list_nights_, lista_bias, x1, x2, y1, y2, ccdbinx, ccdbiny
+                    )
 
                     for i in range(master_flats.shape[0]):
-                        master_flats[i, :, :] = master_flats[i, :, :] - bias_asociado
+                        master_flats[i, :, :] = master_flats[i, :, :] - searched_bias
 
-                    # Normalizamos
-                    valor_medio = np.zeros(master_flats.shape[0], dtype=float)
+                    # Normalize
+                    median_value = np.zeros(master_flats.shape[0], dtype=float)
                     for i in range(master_flats.shape[0]):
 
-                        # Si tiene grisma, usamos una máscara para calcular la mediana
+                        # If it has a grisma, we need to use the mask
                         if free_grisma:
                             x = ma.masked_array(master_flats[i, :, :], ~mask)
-                            valor_medio[i] = ma.median(x)
+                            median_value[i] = ma.median(x)
                         else:
-                            valor_medio[i] = np.median(master_flats[i, :, :])
+                            median_value[i] = np.median(master_flats[i, :, :])
 
-                        if valor_medio[i] <= 0:
-                            # raise ValueError('El valor de la mediana no debe ser negativo ni 0.')
-
-                            if valor_medio[i] == 0:
-                                valor_medio[i] = 1
+                        if median_value[i] <= 0:
+                            if median_value[i] == 0:
+                                median_value[i] = 1
                             else:
-                                valor_medio[i] = abs(valor_medio[i])
+                                median_value[i] = abs(median_value[i])
 
-                        # Después ya dividimos
-                        master_flats[i, :, :] = np.true_divide(master_flats[i, :, :], valor_medio[i])
+                        # Divide
+                        master_flats[i, :, :] = np.true_divide(master_flats[i, :, :], median_value[i])
 
-                    valor_medio2 = np.zeros(master_flats.shape[0], dtype=float)
+                    mean_value2 = np.zeros(master_flats.shape[0], dtype=float)
                     for i in range(master_flats.shape[0]):
-                        valor_medio2[i] = np.mean(master_flats[i, :, :], dtype=float)
+                        mean_value2[i] = np.mean(master_flats[i, :, :], dtype=float)
 
-                    # Colapsamos
-                    master_flats_colapsado = np.median(master_flats, axis=0)
+                    # Collapse
+                    master_flats_colapsed = np.median(master_flats, axis=0)
 
-                    # las esquinas las definimos como 1 para evitar problemas de dividir por 0
+                    # Set corners as 1 to avoid dividing by 0
                     if free_grisma:
-                        master_flats_colapsado[~mask] = 1
+                        master_flats_colapsed[~mask] = 1
 
-                    # plt.imshow(master_flats_colapsado)
-                    # plt.show()
-                    if verbose_imagen:
-                        ImP.imgdibujar(master_flats_colapsado)
+                    if verbose_images:
+                        ImP.imgdibujar(master_flats_colapsed)
                         plt.show()
 
-                    # Generamos el nombre del fichero del flat que se va a generar
-                    # si tiene numero_filtro[filtro] da la posicion del filtro
-                    # si pone nombre_diccionario[filtro] da el numero del diccionario del filtro
-                    nombre_archivo = noche +\
+                    # Generate the name of the future flat
+                    flat_file_name = nights +\
                         "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}-F{6:03d}.fits"\
-                        .format(x1, x2, y1, y2, ccdbinx, ccdbiny, int(nombre_diccionario[filtro]))
+                        .format(x1, x2, y1, y2, ccdbinx, ccdbiny, int(name_dictionary[filtro]))
 
-                    masterflats_header = cabecera.copy()
+                    masterflats_header = header_.copy()
                     if masterflats_header['BLANK']:
                         del masterflats_header['BLANK']
 
-                    ahora = datetime.datetime.now()
-                    ahora_dt = Time(ahora, format='datetime', scale='utc')
+                    now_time = datetime.datetime.now()
+                    now_datetime = Time(now_time, format='datetime', scale='utc')
                     masterflats_header.add_history('Realizado Flat a partir de ' +
-                                                   str(len(indice_seccion_[indice_seccion_ == seccion])) +
-                                                   ' imagenes. | ' + str(ahora_dt)[:19])
-                    numero_flats = 0
-                    for flat_raw in range(len(lista_flats_)):
-                        if indice_seccion_[flat_raw] == seccion:
-                            numero_flats += 1
-                            masterflats_header.add_history(str(numero_flats) + ': ' + lista_flats_[flat_raw])
-                            print(str(numero_flats) + ': ' + lista_flats_[flat_raw])
+                                                   str(len(indx_section_[indx_section_ == section])) +
+                                                   ' imagenes. | ' + str(now_datetime)[:19])
+                    flat_number = 0
+                    for flat_raw in range(len(list_flats_)):
+                        if indx_section_[flat_raw] == section:
+                            flat_number += 1
+                            masterflats_header.add_history(str(flat_number) + ': ' + list_flats_[flat_raw])
+                            print(str(flat_number) + ': ' + list_flats_[flat_raw])
 
-                    if master_flats_colapsado is None:
-                        raise ValueError('No se ha creado correctamente el flat colapsado')
-                    masterflats_final = fits.PrimaryHDU(master_flats_colapsado.astype(np.float32), masterflats_header)
+                    if master_flats_colapsed is None:
+                        raise ValueError('Collapsed flat created wrong.')
+                    masterflats_final = fits.PrimaryHDU(master_flats_colapsed.astype(np.float32), masterflats_header)
 
-                    masterflats_final.writeto(dir_flats_ + nombre_archivo, overwrite=True)
+                    masterflats_final.writeto(dir_flats_ + flat_file_name, overwrite=True)
 
-                    # Añadirlo a la tabla
+                    # Add to table
                     isot_time = masterflats_header['DATE']
-                    tiempo = Time(isot_time, format='isot', scale='utc')
-                    if elemento_lista is None:
-                        elemento_lista = pd.DataFrame([[naxis1_expected, naxis2_expected,
-                                                        x1, x2, y1, y2,
-                                                        ccdbinx, ccdbiny,
-                                                        int(nombre_diccionario[filtro]),
-                                                        free_grisma, numero_grisma,
-                                                        nombre_archivo, noche,
-                                                        tiempo, tiempo.jd]],
-                                                      columns=['Naxis1', 'Naxis2',
-                                                               'x1', 'x2', 'y1', 'y2',
-                                                               'Binning1', 'Binning2',
-                                                               'filtro',
-                                                               'free_grisma', 'num_grisma',
-                                                               'nombre_archivo', 'noche',
-                                                               'tiempo_astropy', 'julian'])
+                    time_dataframe = Time(isot_time, format='isot', scale='utc')
+                    if element_list is None:
+                        element_list = pd.DataFrame([[naxis1_expected, naxis2_expected,
+                                                      x1, x2, y1, y2,
+                                                      ccdbinx, ccdbiny,
+                                                      int(name_dictionary[filtro]),
+                                                      free_grisma, grisma_number,
+                                                      flat_file_name, nights,
+                                                      time_dataframe, time_dataframe.jd]],
+                                                    columns=['Naxis1', 'Naxis2',
+                                                             'x1', 'x2', 'y1', 'y2',
+                                                             'Binning1', 'Binning2',
+                                                             'filtro',
+                                                             'free_grisma', 'num_grisma',
+                                                             'flat_file_name', 'noche',
+                                                             'tiempo_astropy', 'julian'])
                     else:
                         elemento_lista_ = pd.DataFrame([[naxis1_expected, naxis2_expected,
-                                                        x1, x2, y1, y2,
-                                                        ccdbinx, ccdbiny,
-                                                        int(nombre_diccionario[filtro]),
-                                                        free_grisma, numero_grisma,
-                                                        nombre_archivo, noche,
-                                                        tiempo, tiempo.jd]],
+                                                         x1, x2, y1, y2,
+                                                         ccdbinx, ccdbiny,
+                                                         int(name_dictionary[filtro]),
+                                                         free_grisma, grisma_number,
+                                                         flat_file_name, nights,
+                                                         time_dataframe, time_dataframe.jd]],
                                                        columns=['Naxis1', 'Naxis2',
                                                                 'x1', 'x2', 'y1', 'y2',
                                                                 'Binning1', 'Binning2',
                                                                 'filtro',
                                                                 'free_grisma', 'num_grisma',
-                                                                'nombre_archivo', 'noche',
+                                                                'flat_file_name', 'noche',
                                                                 'tiempo_astropy', 'julian'])
-                        elemento_lista = pd.concat([elemento_lista, elemento_lista_], ignore_index=True)
+                        element_list = pd.concat([element_list, elemento_lista_], ignore_index=True)
 
             else:
-                raise ValueError('No Coinciden los binning en ambos ejes')
+                raise ValueError("Binning don't fit on both axis")
 
             if verbose >= 1:
-                coord_lim = ImP.limites_imagen(*coordenadas_dibujo)
-                ImP.imgdibujar(master_flats_colapsado, *coordenadas_dibujo, *coord_lim, verbose_=1)
+                coord_lim = ImP.limites_imagen(*coordinates_image)
+                ImP.imgdibujar(master_flats_colapsed, *coordinates_image, *coord_lim, verbose_=1)
 
             if interactive:
                 input("Press Enter to continue...")
 
-    return elemento_lista
+    return element_list
 
 
-def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_bias, dir_flats,
-                          verbose, interactive, verbose_imagen=False):
+def make_master_flat(list_nights, list_bias, dir_lists, dir_data, dir_bias, dir_flats,
+                     verbose, interactive, verbose_imagen=False):
 
     """
-    Función maestra para generar los master flats.
+    Main function to make master flats.
 
-    :param lista_noches:
-    :param lista_bias:
-    :param dir_listas:
-    :param dir_datos:
+    :param list_nights:
+    :param list_bias:
+    :param dir_lists:
+    :param dir_data:
     :param dir_bias:
     :param dir_flats:
     :param verbose:
@@ -996,130 +979,116 @@ def realizar_master_flats(lista_noches, lista_bias, dir_listas, dir_datos, dir_b
     :return:
     """
 
-    i_noche = 0
+    i_night = 0
     df_flat = None
-    for noche in lista_noches[:]:
-        i_noche += 1
-        print('=== NOCHE ' + noche + ' - (' + str(i_noche) + '/' + str(len(lista_noches)) + ') ===')
+    for night in list_nights[:]:
+        i_night += 1
+        print('=== NIGHT ' + night + ' - (' + str(i_night) + '/' + str(len(list_nights)) + ') ===')
 
-        lista_flats = leer_lista(dir_listas + noche + '/' + 'LFlat.csv')
+        lista_flats = read_list(dir_lists + night + '/' + 'LFlat.csv')
 
-        secciones, secciones_unicas, secciones_count, indice_seccion, bin_secciones, _ = crear_lista_unicos(
-            dir_datos, noche, lista_flats, cabecera='CCDSEC', binning=True
+        sections, unique_section, section_counting, section_index, bin_sections, _ = create_unique_list(
+            dir_data, night, lista_flats, header='CCDSEC', binning=True
         )
 
-        # Variables:
-        # secciones_unicas: lista de STR con las diferentes configuraciones de CCD que se usan
-        # secciones_count: cuantas veces aparecen estas configuraciones
-        # secciones: lista completa de STR de las secciones. se usa de apoyo. Se puede borrar despues
-        # indice_seccion: INT con cual de las secciones pertenecen las calibraciones
-        # coordenadas_secciones: coordenadas de las dierentes secciones
-        # size-secciones: tamanyo de las imagenes en cada seccion
+        sections_coordinates = np.zeros((len(unique_section), 4), dtype=int)
+        for i in range(len(unique_section)):
+            unique_coordinates = obtain_coordinates_ccd(unique_section[i])
+            sections_coordinates[i, :] = [*unique_coordinates]
 
-        coordenadas_secciones = np.zeros((len(secciones_unicas), 4), dtype=int)
-        for i in range(len(secciones_unicas)):
-            coordenadas_unicas = sacar_coordenadas_ccd(secciones_unicas[i])
-            coordenadas_secciones[i, :] = [*coordenadas_unicas]
-
-        df_flat_ = juntar_imagenes_flats(noche, secciones_unicas, coordenadas_secciones, indice_seccion,
-                                         dir_bias, dir_datos, dir_flats, lista_flats, lista_noches, lista_bias,
-                                         verbose=verbose, interactive=interactive, verbose_imagen=verbose_imagen)
+        df_flat_ = join_flat_images(night, unique_section, sections_coordinates, section_index,
+                                    dir_bias, dir_data, dir_flats, lista_flats, list_nights, list_bias,
+                                    verbose=verbose, interactive=interactive, verbose_images=verbose_imagen)
 
         if df_flat is None:
             df_flat = df_flat_
         else:
             df_flat = pd.concat([df_flat, df_flat_], ignore_index=True)
 
-        # print(df_flat)
-        # input('listo')
     return df_flat
 
 
-def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats, dir_reducc,
-                       df_bias, df_flat, verbose=2, verbose_imagen=False):
-    # Cargar listas
-    elemento_lista = None
-    dic_filtro = cargar_json()
-    no_existen = []
-    imagenes_totales_de_ciencia = 0
-    imagenes_guardadas = 0
+def reducing_images(list_nights, dir_listas, dir_datos, dir_bias, dir_flats, dir_reducc,
+                    df_bias, df_flat, verbose=2, verbose_imagen=False):
+    # Load lists
+    element_list = None
+    dic_filter = load_json()
+    doesnt_exist = []
+    total_science_images = 0
+    saved_images = 0
 
-    for noche in lista_noches:
-        imagenes_reducidas_noche = 0
-        print(noche)
-        if noche not in os.listdir(dir_reducc):
-            os.mkdir(dir_reducc + noche + '/')
+    for night in list_nights:
+        images_reduced_night = 0
+        print(night)
+        if night not in os.listdir(dir_reducc):
+            os.mkdir(dir_reducc + night + '/')
 
-        lista_ciencia = leer_lista(dir_listas + noche + '/' + 'SCI.csv')
-        no_existe = (0, 0, len(lista_ciencia))
-        secc, secc_unicas, secc_count, indice_secc, bin_secc, nombres_filtros = crear_lista_unicos(
-            dir_datos, noche, lista_ciencia, cabecera='CCDSEC', binning=True, nombre_filtro=True
+        list_science = read_list(dir_listas + night + '/' + 'SCI.csv')
+        doesnt_exist = (0, 0, len(list_science))
+
+        secc, secc_unicas, secc_count, indice_secc, bin_secc, nombres_filtros = create_unique_list(
+            dir_datos, night, list_science, header='CCDSEC', binning=True, filter_name=True
         )
-        i_imagen = 0
-        for imagen in range(len(lista_ciencia)):
-            i_imagen += 1
-            # Nombre de la imagen
-            nombre_ciencia = dir_datos + noche + '/' + lista_ciencia[imagen]
-            cabecera = fits.open(nombre_ciencia)[0].header
+        i_image = 0
+        for image in range(len(list_science)):
+            i_image += 1
+            # Image name
+            name_science = dir_datos + night + '/' + list_science[image]
+            header = fits.open(name_science)[0].header
 
-            # Coordenadas y binning
-            coordenadas = sacar_coordenadas_ccd(secc_unicas[indice_secc[imagen]])
-            x1, x2, y1, y2 = deshacer_tupla_coord(coordenadas)
-            binning = bin_secc[indice_secc[imagen]]
-            naxis1_r = cabecera['Naxis1']
-            naxis2_r = cabecera['Naxis2']
+            # Coordinates and binning
+            coordinates = obtain_coordinates_ccd(secc_unicas[indice_secc[image]])
+            x1, x2, y1, y2 = tuple2coordinates(coordinates)
+            binning = bin_secc[indice_secc[image]]
+            naxis1_r = header['Naxis1']
+            naxis2_r = header['Naxis2']
 
-            naxis1_ciencia, naxis2_ciencia = sacar_naxis((x1, x2, y1, y2), binning[1], binning[0])
+            naxis1_science, naxis2_science = obtain_naxis((x1, x2, y1, y2), binning[1], binning[0])
 
-            # Comprobamos si hay overscan
-            biassec = cabecera['BIASSEC']
-            coordenadas_biassec = sacar_coordenadas_ccd(biassec)
-            naxis1_overscan, naxis2_overscan = sacar_naxis(coordenadas_biassec, binning[1], binning[0])
+            # Check for overscan
+            biassec = header['BIASSEC']
+            coordinates_biassec = obtain_coordinates_ccd(biassec)
+            naxis1_overscan, naxis2_overscan = obtain_naxis(coordinates_biassec, binning[1], binning[0])
 
-            if coordenadas_biassec[0] == 0 and coordenadas_biassec[1] == 0:
+            if coordinates_biassec[0] == 0 and coordinates_biassec[1] == 0:
                 overscan = False
                 x_1, x_2, y_1, y_2 = None, None, None, None
             else:
-                print('Hay overscan!')
+                print('There is overscan!')
                 overscan = True
 
-                # Hay que recortar. Generamos las secciones de la imagen con la que nos vamos a quedar
-                if coordenadas_biassec[0] > x2:
-                    print('derecha')
-                    print('Zona a recortar:')
+                # There is a need to cut the image. We generate the new section for the image
+                if coordinates_biassec[0] > x2:
                     x_1 = 0
-                    x_2 = naxis2_ciencia
+                    x_2 = naxis2_science
                     y_1 = 0
-                    y_2 = naxis1_ciencia
-                elif coordenadas_biassec[3] > y2:
-                    print('encima')
+                    y_2 = naxis1_science
+                elif coordinates_biassec[3] > y2:
                     x_1 = 0
-                    x_2 = naxis2_ciencia
+                    x_2 = naxis2_science
                     y_1 = 0
-                    y_2 = naxis1_ciencia
-                elif coordenadas_biassec[1] < x1:
-                    print('izquierda')
+                    y_2 = naxis1_science
+                elif coordinates_biassec[1] < x1:
                     x_1 = naxis2_overscan + 1
-                    x_2 = naxis2_ciencia + naxis2_overscan
+                    x_2 = naxis2_science + naxis2_overscan
                     y_1 = 0
-                    y_2 = naxis1_ciencia
-                elif coordenadas_biassec[4] < y1:
-                    print('abajo')
+                    y_2 = naxis1_science
+                elif coordinates_biassec[4] < y1:
                     x_1 = 0
-                    x_2 = naxis2_ciencia
+                    x_2 = naxis2_science
                     y_1 = naxis1_overscan + 1
-                    y_2 = naxis1_ciencia + naxis2_overscan
+                    y_2 = naxis1_science + naxis2_overscan
                 else:
-                    raise ValueError('No hay combinacion para donde esta el overscan!')
+                    raise ValueError('Where is the overscan?!')
 
-            # Obtenemos el nombre del filtro y su ID_filtro
-            nombrefiltro = nombres_filtros[imagen]
-            id_filtro = leer_diccionario(nombrefiltro, dic_filtro)
+            # We obtain the name of the filter and it's ID_filter
+            filtername = nombres_filtros[image]
+            id_filter = read_dictionary(filtername, dic_filter)
 
-            # Fecha Juliana
-            isot_time = cabecera['DATE']
-            fecha = str2datetime(isot_time)
-            tiempo = Time(isot_time, format='isot', scale='utc')
+            # Julian Date
+            isot_time = header['DATE']
+            date_datetime = str2datetime(isot_time)
+            time_isot = Time(isot_time, format='isot', scale='utc')
 
             if verbose > 0:
                 mostrarresultados(['noche', 'naxis1_r', 'naxis2_r', 'naxis1_c', 'naxis2_c',
@@ -1128,25 +1097,25 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
                                    'FJM', 'Overscan',
                                    'imagen', 'nombre',
                                    'fecha', 'hora'],
-                                  [noche, naxis1_r, naxis2_r, naxis1_ciencia, naxis2_ciencia,
+                                  [night, naxis1_r, naxis2_r, naxis1_science, naxis2_science,
                                    x1, x2, y1, y2,
-                                   binning, nombrefiltro, id_filtro,
-                                   tiempo.jd, overscan,
-                                   imagen, lista_ciencia[imagen],
-                                   fecha.date(), fecha.time()],
-                                  contador=i_imagen, valor_max=len(lista_ciencia))
+                                   binning, filtername, id_filter,
+                                   time_isot.jd, overscan,
+                                   image, list_science[image],
+                                   date_datetime.date(), date_datetime.time()],
+                                  contador=i_image, valor_max=len(list_science))
 
             # Buscamos el Bias
             # Seleccionamos los que coinciden con el tamaño teorico
-            datat = df_bias[df_bias.Naxis1 == naxis1_ciencia]
-            datat = datat[datat.Naxis2 == naxis2_ciencia]
+            datat = df_bias[df_bias.Naxis1 == naxis1_science]
+            datat = datat[datat.Naxis2 == naxis2_science]
             datat = datat[datat.Binning1 == binning[0]]
             datat = datat[datat.Binning2 == binning[1]]
-            fechasjd_b = abs(datat.julian.values - tiempo.jd)
+            fechasjd_b = abs(datat.julian.values - time_isot.jd)
             if len(fechasjd_b) > 0:
                 pos_min = np.argmin(fechasjd_b)
                 nombre_bias_buscado = datat.iloc[pos_min]['nombre_archivo']
-                if datat.iloc[pos_min]['noche'] != noche:
+                if datat.iloc[pos_min]['noche'] != night:
                     if verbose > 1:
                         print('El bias mas cercano no es de esta noche.')
 
@@ -1156,22 +1125,22 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
                 relleno_b = 680
                 if verbose > 1:
                     print('No se han encontrado bias de esa forma, se genera uno artificial.')
-                bias_asociado = np.full((naxis1_ciencia, naxis2_ciencia), relleno_b, dtype=float)
+                bias_asociado = np.full((naxis1_science, naxis2_science), relleno_b, dtype=float)
 
             # Buscamos el Flat
             # Seleccionamos los que coinciden con el tamaño teorico
-            dataf = df_flat[df_flat.Naxis1 == naxis1_ciencia]
-            dataf = dataf[dataf.Naxis2 == naxis2_ciencia]
+            dataf = df_flat[df_flat.Naxis1 == naxis1_science]
+            dataf = dataf[dataf.Naxis2 == naxis2_science]
             dataf = dataf[dataf.Binning1 == binning[0]]
             dataf = dataf[dataf.Binning2 == binning[1]]
-            dataf = dataf[dataf.filtro == id_filtro]
+            dataf = dataf[dataf.filtro == id_filter]
 
             # Lista de los bias en función de la distancia en tiempo a la imagen de ciencia
-            fechasjd_f = abs(dataf.julian.values - tiempo.jd)
+            fechasjd_f = abs(dataf.julian.values - time_isot.jd)
             if len(fechasjd_f) > 0:
                 pos_min = np.argmin(fechasjd_f)
                 nombre_flat_buscado = dataf.iloc[pos_min]['nombre_archivo']
-                if dataf.iloc[pos_min]['noche'] != noche:
+                if dataf.iloc[pos_min]['noche'] != night:
                     if verbose > 1:
                         print('Existe un Flat, pero no es de esta noche.')
                 flat_asociado = fits.getdata(dir_flats + nombre_flat_buscado, ext=0)
@@ -1180,11 +1149,11 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
                 nombre_flat_buscado = 'Ausente'
                 relleno_f = 1
                 print('No se han encontrado flats, se genera uno artificialmente.')
-                flat_asociado = np.full((naxis1_ciencia, naxis2_ciencia), relleno_f, dtype=float)
+                flat_asociado = np.full((naxis1_science, naxis2_science), relleno_f, dtype=float)
 
             # Obtenemos la información de la imagen de ciencia
-            image_data = fits.getdata(nombre_ciencia, ext=0)
-            reducido_header = cabecera.copy()
+            image_data = fits.getdata(name_science, ext=0)
+            reducido_header = header.copy()
 
             # Comprobamos si hay o no overscan que haya que tener en cuenta
             if overscan:
@@ -1210,7 +1179,7 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
                 free_grisma = False
 
             if free_grisma:
-                mask = create_circular_mask(naxis1_ciencia, naxis2_ciencia)  # Se puede cambiar el centro y radio
+                mask = create_circular_mask(naxis1_science, naxis2_science)  # Se puede cambiar el centro y radio
                 reducido_datos[~mask] = 1
 
             ahora = datetime.datetime.now()
@@ -1223,21 +1192,21 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
             # Guardamos la imagen
             reducido_final = fits.PrimaryHDU(reducido_datos.astype(np.float32), reducido_header)
 
-            reducido_final.writeto(dir_reducc + noche + '/' + 'r_' + lista_ciencia[imagen], overwrite=True)
+            reducido_final.writeto(dir_reducc + night + '/' + 'r_' + list_science[image], overwrite=True)
 
-            imagenes_reducidas_noche += 1
+            images_reduced_night += 1
 
             ahora = datetime.datetime.now()
-            tiempo = Time(ahora, format='datetime', scale='utc')
-            if elemento_lista is None:
-                elemento_lista = pd.DataFrame([[naxis1_ciencia, naxis2_ciencia,
+            time_isot = Time(ahora, format='datetime', scale='utc')
+            if element_list is None:
+                element_list = pd.DataFrame([[naxis1_science, naxis2_science,
                                                 x1, x2, y1, y2,
                                                 binning[0], binning[1],
-                                                id_filtro,
+                                                id_filter,
                                                 free_grisma, numero_grisma,
-                                                'r_' + lista_ciencia[imagen],
+                                                'r_' + list_science[image],
                                                 nombre_bias_buscado, nombre_flat_buscado,
-                                                noche, tiempo, tiempo.jd]],
+                                                night, time_isot, time_isot.jd]],
                                               columns=['Naxis1', 'Naxis2',
                                                        'x1', 'x2', 'y1', 'y2',
                                                        'Binning1', 'Binning2',
@@ -1247,14 +1216,14 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
                                                        'nombre bias', 'nombre flat',
                                                        'noche', 'Fecha realizacion', 'julian'])
             else:
-                elemento_lista_ = pd.DataFrame([[naxis1_ciencia, naxis2_ciencia,
+                elemento_lista_ = pd.DataFrame([[naxis1_science, naxis2_science,
                                                  x1, x2, y1, y2,
                                                  binning[0], binning[1],
-                                                 id_filtro,
+                                                 id_filter,
                                                  free_grisma, numero_grisma,
-                                                 'r_' + lista_ciencia[imagen],
+                                                 'r_' + list_science[image],
                                                  nombre_bias_buscado, nombre_flat_buscado,
-                                                 noche, tiempo, tiempo.jd]],
+                                                 night, time_isot, time_isot.jd]],
                                                columns=['Naxis1', 'Naxis2',
                                                         'x1', 'x2', 'y1', 'y2',
                                                         'Binning1', 'Binning2',
@@ -1263,29 +1232,29 @@ def realizar_reduccion(lista_noches, dir_listas, dir_datos, dir_bias, dir_flats,
                                                         'nombre_archivo',
                                                         'nombre bias', 'nombre flat',
                                                         'noche', 'Fecha realizacion', 'julian'])
-                elemento_lista = pd.concat([elemento_lista, elemento_lista_], ignore_index=True)
+                element_list = pd.concat([element_list, elemento_lista_], ignore_index=True)
 
         # Al final de cada noche se hace el recuento
-        no_existen.append(no_existe)
-        imagenes_guardadas += imagenes_reducidas_noche
+        doesnt_exist.append(doesnt_exist)
+        saved_images += images_reduced_night
         print('verbosidad reduccion', verbose)
         if verbose > 0:
-            mostrarresultados(['Imagenes reducidas', 'Acumulado'], [imagenes_reducidas_noche, imagenes_guardadas],
+            mostrarresultados(['Imagenes reducidas', 'Acumulado'], [images_reduced_night, saved_images],
                               titulo="Reduccion de Imagenes",
-                              contador=lista_noches.index(noche), valor_max=len(lista_noches))
+                              contador=list_nights.index(night), valor_max=len(list_nights))
 
-    mostrarresultados(lista_noches, no_existen)
+    mostrarresultados(list_nights, doesnt_exist)
     no_existen_2 = [0, 0]
-    _ = elemento_lista.to_csv('df_reducido.csv', index=None, header=True)
-    for i in range(len(no_existen)):
-        imagenes_totales_de_ciencia += no_existen[i][2]
-        no_existen_2[0] += no_existen[i][0]
-        no_existen_2[1] += no_existen[i][1]
+    _ = element_list.to_csv('df_reducido.csv', index=None, header=True)
+    for i in range(len(doesnt_exist)):
+        total_science_images += doesnt_exist[i][2]
+        no_existen_2[0] += doesnt_exist[i][0]
+        no_existen_2[1] += doesnt_exist[i][1]
 
     print('Biases que no ha funcionado: ', no_existen_2[0], '| Flats que no ha funcionado: ', no_existen_2[1],
-          '| Imagenes en total: ', imagenes_totales_de_ciencia, '| Imagenes reducidas: ', imagenes_guardadas)
+          '| Imagenes en total: ', total_science_images, '| Imagenes reducidas: ', saved_images)
 
-    return imagenes_guardadas
+    return saved_images
 
 
 def pruebas_pandas(data):
@@ -1411,8 +1380,8 @@ def main():
     tiempo_inicio = time.time()
 
     # Separamos entre calibración y ciencia
-    crear_listas_cal_y_sci(lista_noches, args.dir_listas, args.dir_datos, desc_bias, desc_flats, desc_arc,
-                           verbosidad, args.calysci)
+    create_list_cal_and_sci(lista_noches, args.dir_listas, args.dir_datos, desc_bias, desc_flats, desc_arc,
+                            verbosidad, args.calysci)
     tiempo_listas = time.time()
 
     print(args.nobias, args.noflat, args.noreducc)
@@ -1423,8 +1392,8 @@ def main():
 
     # Creamos los Master Biases
     if realizarbias:
-        df_bias = realizar_master_biases(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
-                                         args.interactive, args.recortar, verbose_imagen=args.verboseimage)
+        df_bias = make_master_bias(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
+                                   args.interactive, args.recortar, verbose_imagen=args.verboseimage)
         numero_bias = len(os.listdir(args.dir_bias))
         print(df_bias)
         _ = df_bias.to_csv('df_bias.csv', index=None, header=True)
@@ -1433,14 +1402,14 @@ def main():
         print('Se han importado los bias')
         numero_bias = '-'
 
-    lista_bias = conseguir_listas_archivos(args.dir_bias)
+    lista_bias = obtain_files_lists(args.dir_bias)
     tiempo_biases = time.time()
 
     # Creamos los Master Flats
     if realizarflat:
-        df_flat = realizar_master_flats(lista_noches, lista_bias,
-                                        args.dir_listas, args.dir_datos, args.dir_bias, args.dir_flats,
-                                        verbosidad, args.interactive, verbose_imagen=args.verboseimage)
+        df_flat = make_master_flat(lista_noches, lista_bias,
+                                   args.dir_listas, args.dir_datos, args.dir_bias, args.dir_flats,
+                                   verbosidad, args.interactive, verbose_imagen=args.verboseimage)
         numero_flats = len(os.listdir(args.dir_flats))
         print(df_flat)
         _ = df_flat.to_csv('df_flat.csv', index=None, header=True)
@@ -1453,9 +1422,9 @@ def main():
 
     # Juntamos todos los procesos y relizamos la reducción
     if args.noreducc:
-        numeros_reducidos = realizar_reduccion(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
-                                               args.dir_flats, args.dir_reducc, df_bias, df_flat,
-                                               verbosidad, verbose_imagen=args.verboseimage)
+        numeros_reducidos = reducing_images(lista_noches, args.dir_listas, args.dir_datos, args.dir_bias,
+                                            args.dir_flats, args.dir_reducc, df_bias, df_flat,
+                                            verbosidad, verbose_imagen=args.verboseimage)
     else:
         numeros_reducidos = '-'
     tiempo_reducc = time.time()

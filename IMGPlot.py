@@ -1,5 +1,5 @@
 import numpy as np
-from Salida_limpia import mostrarresultados, stdrobusta
+from Salida_limpia import mostrarresultados, stdrobust
 # import pandas as pd
 import matplotlib.pyplot as plt
 # import os
@@ -111,7 +111,7 @@ def imgdibujar(image2d, x1=None, x2=None, y1=None, y2=None,
                           [x1, x2, y1, y2, -1,
                            xmin, xmax, ymin, ymax, -1,
                            background, foreground, -1,
-                           np.median(image2d), np.mean(image2d), stdrobusta(image2d, 2),
+                           np.median(image2d), np.mean(image2d), stdrobust(image2d, 2),
                            round((xmax-xmin)/(ymax-ymin), 2)],
                           titulo='Parametros Imagen')
 
@@ -162,7 +162,7 @@ def main():
         mostrarresultados(resultverbose + ['NAXIS1', 'NAXIS2', -1,
                                            'Mediana', 'Std'],
                           resuldverbose + [hdr['NAXIS1'], hdr['NAXIS2'], -1,
-                                           np.median(image2d), stdrobusta(image2d, 2)],
+                                           np.median(image2d), stdrobust(image2d, 2)],
                           titulo='Parametros')
 
     coordenadas_dibujo, limite_coordenadas = coordenadas(*coordenadas_a_dibujar, args, hdr)
