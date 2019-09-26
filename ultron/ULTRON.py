@@ -9,11 +9,9 @@
 
 from astropy.io import fits
 from astropy.time import Time
-from .Salida_limpia import mostrarresultados, stdrobust
 import numpy as np
 import pandas as pd
 import numpy.ma as ma
-from .IMGPlot import imgdibujar, limites_imagen
 import matplotlib.pyplot as plt
 import os
 import csv
@@ -23,14 +21,13 @@ import datetime
 import warnings
 import json
 
+from .Salida_limpia import mostrarresultados, stdrobust
+from .IMGPlot import imgdibujar, limites_imagen
+from .str2datetime import str2datetime
+
 
 def tuple2coordinates(tupla):
     return tupla[0], tupla[1], tupla[2], tupla[3]
-
-
-def str2datetime(string):
-    output = datetime.datetime.strptime(string, '%Y-%m-%dT%H:%M:%S')
-    return output
 
 
 def save_file_csv(csvfile, res):
