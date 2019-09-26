@@ -2,3 +2,5 @@
 ASdf.py
 __pycache__
 *~
+.eggs/
+build/
