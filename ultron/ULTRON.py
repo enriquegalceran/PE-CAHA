@@ -9,11 +9,11 @@
 
 from astropy.io import fits
 from astropy.time import Time
-from Salida_limpia import mostrarresultados, stdrobust
+from .Salida_limpia import mostrarresultados, stdrobust
 import numpy as np
 import pandas as pd
 import numpy.ma as ma
-import IMGPlot as ImP
+from .IMGPlot import imgdibujar, limites_imagen
 import matplotlib.pyplot as plt
 import os
 import csv
@@ -607,7 +607,7 @@ def join_bias_images(night, unique_sections_, coordinates_sections_, sections_co
 
         master_bias_colapsed = np.median(master_biases, axis=0)
         if verbose_imagen:
-            ImP.imgdibujar(master_bias_colapsed, verbose_=1)
+            imgdibujar(master_bias_colapsed, verbose_=1)
             plt.show()
         file_name = night + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}.fits".format(x1, x2, y1, y2,
                                                                                             ccdbinx, ccdbiny)
@@ -639,8 +639,8 @@ def join_bias_images(night, unique_sections_, coordinates_sections_, sections_co
         masterbias_final.writeto(dir_bias_ + file_name, overwrite=True)
 
         if verbose_imagen:
-            coord_lim = ImP.limites_imagen(*coordinates_image)
-            ImP.imgdibujar(master_bias_colapsed, *coordinates_image, *coord_lim, verbose_=1)
+            coord_lim = limites_imagen(*coordinates_image)
+            imgdibujar(master_bias_colapsed, *coordinates_image, *coord_lim, verbose_=1)
 
         if interactive:
             input("Press Enter to continue...")
@@ -883,7 +883,7 @@ def join_flat_images(nights, unique_sections_, sections_coordinates_, indx_secti
                         master_flats_colapsed[~mask] = 1
 
                     if verbose_images:
-                        ImP.imgdibujar(master_flats_colapsed)
+                        imgdibujar(master_flats_colapsed)
                         plt.show()
 
                     # Generate the name of the future flat
@@ -952,8 +952,8 @@ def join_flat_images(nights, unique_sections_, sections_coordinates_, indx_secti
                 raise ValueError("Binning don't fit on both axis")
 
             if verbose >= 1:
-                coord_lim = ImP.limites_imagen(*coordinates_image)
-                ImP.imgdibujar(master_flats_colapsed, *coordinates_image, *coord_lim, verbose_=1)
+                coord_lim = limites_imagen(*coordinates_image)
+                imgdibujar(master_flats_colapsed, *coordinates_image, *coord_lim, verbose_=1)
 
             if interactive:
                 input("Press Enter to continue...")
@@ -1165,7 +1165,7 @@ def reducing_images(list_nights, dir_listas, dir_datos, dir_bias, dir_flats, dir
             ##############################################################################
 
             if verbose_imagen:
-                ImP.imgdibujar(reducido_datos)
+                imgdibujar(reducido_datos)
                 plt.show()
 
             if reducido_header['BLANK']:
