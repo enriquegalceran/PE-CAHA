@@ -19,11 +19,13 @@ import argparse
 import time
 import datetime
 import warnings
-import json
 
 from .Salida_limpia import mostrarresultados, stdrobust
 from .IMGPlot import imgdibujar, limites_imagen
 from .str2datetime import str2datetime
+from .json_functions import load_json, save_json
+from .dictionary import read_dictionary, show_dictionary
+from .coordinates import obtain_coordinates_2, obtain_coordinates_ccd
 
 
 def tuple2coordinates(tupla):
@@ -37,25 +39,6 @@ def save_file_csv(csvfile, res):
             writer.writerow([val])
 
 
-def show_dictionary(dictionary_name):
-    print("Showing dictionary: ")
-    for x, y in dictionary_name.items():
-        print(x, y)
-
-
-def save_json(variable, filename):
-    json_f = json.dumps(variable, indent=2, sort_keys=True)
-    f = open(filename, "w")
-    f.write(json_f)
-    f.close()
-
-
-def load_json(filename='Dic_filtro.json'):
-    with open(filename) as json_file:
-        data = json.load(json_file)
-    return data
-
-
 def obtain_files_lists(path_):
     file_list = []
     for file in os.listdir(path_):
@@ -64,87 +47,12 @@ def obtain_files_lists(path_):
     return file_list
 
 
-def read_dictionary(name, dictionary_, filename='Dic_filtro.json'):
-    """
-    Busca en el diccionario el número del filtro buscado. Si no existe, crea uno nuevo
-
-    :param name:
-    :param dictionary_:
-    :param filename:
-    :return:
-    """
-    if name in dictionary_:
-        return dictionary_[name]
-    else:
-        len_dic = len(dictionary_)
-        dictionary_[name] = len_dic
-        print('New dictionry entry: Filter {0} - Index {1:03d}'.format(name, dictionary_[name]))
-        save_json(dictionary_, filename)
-        return dictionary_[name]
-
-
-def obtain_coordinates_ccd(image_, mypath_=False):
-    """
-    Given a string following the CAFOS structure, obtains the coordinates of the ccd (x1, x2, y1 and y2) as a tuple.
-
-    :param image_:
-    :param mypath_:
-    :return:
-    """
-    if mypath_:
-        str_ccdsec = fits.open(mypath_ + image_)[0].header['CCDSEC']
-        longitud = len(str_ccdsec)
-    else:
-        str_ccdsec = image_
-        longitud = len(str_ccdsec)+1
-
-    comma = None
-    for x in range(1, longitud):
-        if str_ccdsec[x] == ',':
-            comma = x
-            break
-    if comma is None:
-        raise ValueError('comma not defined!')
-
-    colon = None
-    for x in range(comma + 1, longitud):
-        if str_ccdsec[x] == ':':
-            colon = x
-            break
-    if colon is None:
-        raise ValueError('colon not defined!')
-
-    coma2 = None
-    for x in range(colon + 1, longitud):
-        if str_ccdsec[x] == ',':
-            coma2 = x
-            break
-    if coma2 is None:
-        raise ValueError('coma2 not defined!')
-
-    x1 = int(str_ccdsec[1:comma])
-    y1 = int(str_ccdsec[comma + 1: colon])
-    x2 = int(str_ccdsec[colon + 1: coma2])
-    y2 = int(str_ccdsec[coma2 + 1: -1])
-    tupla_salida = (x1, x2, y1, y2)
-    return tupla_salida
-
-
 def read_list(archivo):
     with open(archivo, 'rt') as f:
         reader = csv.reader(f, delimiter=',')
         your_list = list(reader)
     your_list = [item for sublist in your_list for item in sublist]
     return your_list
-
-
-def obtain_coordinates_2(lista, idx):
-    x1 = lista[idx, 0]
-    x2 = lista[idx, 1]
-    y1 = lista[idx, 2]
-    y2 = lista[idx, 3]
-    output_tuple = (x1, x2, y1, y2)
-    return output_tuple
 
 
 def obtain_bias(dir_bias_, night, list_nights, list_bias, x1, x2, y1, y2, b1, b2,

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from Salida_limpia import mostrarresultados, stdrobust
 from astropy.io import fits
 import IMGPlot as ImP
-import json
+import json_functions
 
 
 def deshacer_tupla_coord(tupla):
@@ -41,7 +41,7 @@ def mostrar_diccionario(nombre_diccionario):
 
 
 def guardar_json(variable, filename):
-    json_f = json.dumps(variable)
+    json_f = json_functions.dumps(variable)
     f = open(filename,"w")
     f.write(json_f)
     f.close()
@@ -49,7 +49,7 @@ def guardar_json(variable, filename):
 
 def cargar_json(filename='Dic_filtro.json'):
     with open(filename) as json_file:
-        data = json.load(json_file)
+        data = json_functions.load(json_file)
     return data
 
 
