@@ -1,11 +1,6 @@
 import numpy as np
 from .Salida_limpia import mostrarresultados, stdrobust
-# import pandas as pd
 import matplotlib.pyplot as plt
-# import os
-# import csv
-# from astropy.visualization import astropy_mpl_style
-# from numpy import genfromtxt
 from astropy.io import fits
 import argparse
 
@@ -178,10 +173,3 @@ def main():
 if __name__ == "__main__":
 
     main()
-
-
-# Hacer una funcion que dibuje y llamarlo desde dentro de main(), esa es la que se puede ejecutar desde inicio.py
-# directamente y que tenga como argumentos las entradas del argparse.
-#
-# usar split y separando por comas. importar como str.
-
