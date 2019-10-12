@@ -1,20 +1,66 @@
 from astropy.io import fits
 from astropy.time import Time
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import os
 import datetime
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+import pandas as pd
 
-from .Salida_limpia import mostrarresultados
-from .IMGPlot import imgdibujar
-from .str2datetime import str2datetime
-from .json_functions import load_json
-from .dictionary import read_dictionary
-from .coordinates import obtain_coordinates_ccd
 from .auxiliary_functions import tuple2coordinates, obtain_naxis
+from .coordinates import obtain_coordinates_ccd
+from .dictionary import read_dictionary
 from .generate_lists import read_list, create_unique_list
+from .IMGPlot import imgdibujar
+from .json_functions import load_json
 from .mask_generation import create_circular_mask
+from .Salida_limpia import mostrarresultados
+from .str2datetime import str2datetime
+
+
+def decidir_repetir_calculos(norealizar, sirealizar, sujeto, dir_df, dir_sujetos):
+    existe_bias = os.path.exists(dir_df + 'df_' + sujeto + '.csv')
+    lista_existentes = os.listdir(dir_sujetos)
+    if not any([norealizar, sirealizar]):
+        if existe_bias:
+            print('Se va a coger una version ya existente de los ' + sujeto)
+            importado = pd.read_csv(dir_df + 'df_' + sujeto + '.csv')
+            lista_teorica = importado.nombre_archivo.values.tolist()
+
+            contador_t = 0
+            contador_e = 0
+            for i in range(len(lista_existentes)):
+                if lista_teorica[i] in lista_existentes:
+                    contador_t += 1
+                if lista_existentes[i] in lista_teorica:
+                    contador_e += 1
+
+            if contador_e == len(lista_existentes) and contador_t == len(lista_teorica):
+                print('Estan todos contabilizados, no hace falta volver a calcular los ' + sujeto)
+                realizar = False
+            else:
+                print('No estan todos los ' + sujeto + ', se vuelven a calcular')
+                realizar = True
+        else:
+            print('No existe el dataframe, se calcula el dataframe de los ' + sujeto)
+            realizar = True
+    elif norealizar:
+        if existe_bias:
+            print('Existe el dataframe de ' + sujeto + '. No se repite')
+            realizar = False
+        else:
+            print('No existe el dataframe de ' + sujeto + ', se fuerza que se vuelva a hacer')
+            realizar = True
+    elif sirealizar:
+        if existe_bias:
+            print('Existe el dataframe de ' + sujeto + '. Se fuerza calcularlo de nuevo')
+            realizar = True
+        else:
+            print('No existe el dataframe de ' + sujeto + ', Se fuerza que se haga')
+            realizar = True
+    else:
+        raise ValueError('No cuadran las condiciones para los ' + sujeto + '!')
+
+    return realizar
 
 
 def reducing_images(list_nights, dir_listas, dir_datos, dir_bias, dir_flats, dir_reducc,
@@ -264,49 +310,3 @@ def reducing_images(list_nights, dir_listas, dir_datos, dir_bias, dir_flats, dir
           '| Imagenes en total: ', total_science_images, '| Imagenes reducidas: ', saved_images)
 
     return saved_images
-
-
-def decidir_repetir_calculos(norealizar, sirealizar, sujeto, dir_df, dir_sujetos):
-    existe_bias = os.path.exists(dir_df + 'df_' + sujeto + '.csv')
-    lista_existentes = os.listdir(dir_sujetos)
-    if not any([norealizar, sirealizar]):
-        if existe_bias:
-            print('Se va a coger una version ya existente de los ' + sujeto)
-            importado = pd.read_csv(dir_df + 'df_' + sujeto + '.csv')
-            lista_teorica = importado.nombre_archivo.values.tolist()
-
-            contador_t = 0
-            contador_e = 0
-            for i in range(len(lista_existentes)):
-                if lista_teorica[i] in lista_existentes:
-                    contador_t += 1
-                if lista_existentes[i] in lista_teorica:
-                    contador_e += 1
-
-            if contador_e == len(lista_existentes) and contador_t == len(lista_teorica):
-                print('Estan todos contabilizados, no hace falta volver a calcular los ' + sujeto)
-                realizar = False
-            else:
-                print('No estan todos los ' + sujeto + ', se vuelven a calcular')
-                realizar = True
-        else:
-            print('No existe el dataframe, se calcula el dataframe de los ' + sujeto)
-            realizar = True
-    elif norealizar:
-        if existe_bias:
-            print('Existe el dataframe de ' + sujeto + '. No se repite')
-            realizar = False
-        else:
-            print('No existe el dataframe de ' + sujeto + ', se fuerza que se vuelva a hacer')
-            realizar = True
-    elif sirealizar:
-        if existe_bias:
-            print('Existe el dataframe de ' + sujeto + '. Se fuerza calcularlo de nuevo')
-            realizar = True
-        else:
-            print('No existe el dataframe de ' + sujeto + ', Se fuerza que se haga')
-            realizar = True
-    else:
-        raise ValueError('No cuadran las condiciones para los ' + sujeto + '!')
-
-    return realizar

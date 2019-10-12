@@ -1,8 +1,8 @@
 """
     Plotting a progression bar
 """
-import time
 import numpy as np
+import time
 
 
 def arrow(partial, total=10):

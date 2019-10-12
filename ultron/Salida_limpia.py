@@ -1,31 +1,11 @@
 import numpy as np
 
 
-nombres_ = ['Abcdefg', 'qwerty', '-1', 'poiulkij', 'prjgndheosk']
-valores_ = [1453125, 'qowjesnal', '-1', 1521563156214, 'pwjenndns']
-titulo_ = 'Resultados'
-relleno_ = '.'
-
-
-def rellenar(x0, n):
-    x = x0
-    while len(x) < n:
-        x = x + x0
-    return x
-
-
 def meter0(x, n):
     x = str(x)
     while len(x) < n:
         x = '0' + x
     return x
-
-
-def stdrobust(array, redondear=None):
-    salida = 0.7413 * (np.quantile(array.reshape(-1,), 0.75) - np.quantile(array.reshape(-1,), 0.25))
-    if redondear:
-        salida = np.round(salida, redondear)
-    return salida
 
 
 def mostrarresultados(nombres, valores, contador=None, valor_max=None, titulo='Resultados', relleno='.', separador='%'):
@@ -86,4 +66,15 @@ def mostrarresultados(nombres, valores, contador=None, valor_max=None, titulo='R
     print(cierre)
 
 
-# mostrarresultados(nombres_, valores_, contador=5, valor_max=2000, titulo=titulo_, relleno=relleno_)
+def rellenar(x0, n):
+    x = x0
+    while len(x) < n:
+        x = x + x0
+    return x
+
+
+def stdrobust(array, redondear=None):
+    salida = 0.7413 * (np.quantile(array.reshape(-1,), 0.75) - np.quantile(array.reshape(-1,), 0.25))
+    if redondear:
+        salida = np.round(salida, redondear)
+    return salida

@@ -6,17 +6,16 @@
     Recoge los resultados de observaciones del instrumento CAFOS y los reduce correctamente.
     Desarrollado por Enrique Galceran García
 """
-
-import pandas as pd
-import os
 import argparse
+import os
+import pandas as pd
 import time
 
-from .Salida_limpia import mostrarresultados
-from .generate_lists import obtain_files_lists, create_list_cal_and_sci
 from .bias import make_master_bias
 from .flat import make_master_flat
+from .generate_lists import obtain_files_lists, create_list_cal_and_sci
 from .reduction import reducing_images, decidir_repetir_calculos
+from .Salida_limpia import mostrarresultados
 
 
 def main():

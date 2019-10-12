@@ -6,20 +6,56 @@ from .Salida_limpia import stdrobust, mostrarresultados
 from .auxiliary_functions import save_file_csv
 
 
-def obtain_files_lists(path_):
-    file_list = []
-    for file in os.listdir(path_):
-        if file.endswith(".fits"):
-            file_list.append(os.path.join(path_, file))
-    return file_list
+def checking(file_, descriptor, descriptor2=None, descriptor3=None, verbose=False):
+    if any([descriptor2, descriptor3]):
+        descriptortemp = descriptor + descriptor2 + descriptor3
+        coincides = True
+        for texto in descriptortemp:
+            if texto in fits.open(file_)[0].header['OBJECT']:
+                # Some coincide without being science images
+                coincides = False
+                break
+    else:
+        coincides = False
+        for texto in descriptor:
+            if texto in fits.open(file_)[0].header['OBJECT']:
+                # Both are the same
+                coincides = True
+                break
+    if verbose:
+        print(file_, fits.open(file_)[0].header['OBJECT'], fits.open(file_)[0].header['imagetyp'], coincides)
+
+    # Maybe add something that checks for test
+
+    return coincides
 
 
-def read_list(archivo):
-    with open(archivo, 'rt') as f:
-        reader = csv.reader(f, delimiter=',')
-        your_list = list(reader)
-    your_list = [item for sublist in your_list for item in sublist]
-    return your_list
+def create_list_cal_and_sci(lista_nights_, dir_lists_, dir_data_, desc_bias, desc_flats, desc_arc, verbose, calysci):
+    i = 0
+    for night in lista_nights_:
+        i += 1
+        if night not in os.listdir(dir_lists_):
+            os.mkdir(dir_lists_ + night + '/')
+
+            path_ = dir_data_ + night + '/'
+            l_bias, l_flat, l_arc, l_ciencia, l_archivos, l_falla = file_list_2(path_,
+                                                                                desc_bias,
+                                                                                desc_flats,
+                                                                                desc_arc,
+                                                                                verbose,
+                                                                                calysci)
+
+            mostrarresultados(['Bias', 'Flat', 'Arc', 'Ciencia', 'Falla'],
+                              [len(l_bias), len(l_flat), len(l_arc), len(l_ciencia), len(l_falla)],
+                              titulo=night, contador=i, valor_max=len(lista_nights_))
+
+            # save_file_csv(dir_lista_ + night + '/' + 'CAL.csv', cal)
+            save_file_csv(dir_lists_ + night + '/' + 'SCI.csv', l_ciencia)
+            save_file_csv(dir_lists_ + night + '/' + 'ARC.csv', l_archivos)
+            save_file_csv(dir_lists_ + night + '/' + 'LBias.csv', l_bias)
+            save_file_csv(dir_lists_ + night + '/' + 'LFlat.csv', l_flat)
+            save_file_csv(dir_lists_ + night + '/' + 'LArc.csv', l_arc)
+            save_file_csv(dir_lists_ + night + '/' + 'Errores.csv', l_falla)
 
 
 def create_unique_list(dir_data, night, stuff_list, header, binning=False, filter_name=False):
@@ -63,44 +99,6 @@ def create_unique_list(dir_data, night, stuff_list, header, binning=False, filte
                 break
 
     return lista, unique_list, count_list, indx_stuff, bin_sections, name_filter
-
-
-def most_probable_image(archivo):
-    image_data = fits.getdata(archivo, ext=0)
-    v_median = np.median(image_data)
-    v_sd = stdrobust(image_data)
-    if v_sd < 50 and v_median < 900:
-        probable = 0  # Bias
-    elif v_sd < 500:
-        probable = 1  # Arc
-    else:
-        probable = 2  # Flat
-
-    return probable
-
-
-def checking(file_, descriptor, descriptor2=None, descriptor3=None, verbose=False):
-    if any([descriptor2, descriptor3]):
-        descriptortemp = descriptor + descriptor2 + descriptor3
-        coincides = True
-        for texto in descriptortemp:
-            if texto in fits.open(file_)[0].header['OBJECT']:
-                # Some coincide without being science images
-                coincides = False
-                break
-    else:
-        coincides = False
-        for texto in descriptor:
-            if texto in fits.open(file_)[0].header['OBJECT']:
-                # Both are the same
-                coincides = True
-                break
-    if verbose:
-        print(file_, fits.open(file_)[0].header['OBJECT'], fits.open(file_)[0].header['imagetyp'], coincides)
-
-    # Maybe add something that checks for test
-
-    return coincides
 
 
 def file_list_2(path_, desc_bias, desc_flats, desc_arc, verbose=False, calysci=True):
@@ -179,29 +177,31 @@ def file_list_2(path_, desc_bias, desc_flats, desc_arc, verbose=False, calysci=T
     return lista_bias, lista_flat, lista_arc, lista_science, lista_files, lista_wrong
 
 
-def create_list_cal_and_sci(lista_nights_, dir_lists_, dir_data_, desc_bias, desc_flats, desc_arc, verbose, calysci):
-    i = 0
-    for night in lista_nights_:
-        i += 1
-        if night not in os.listdir(dir_lists_):
-            os.mkdir(dir_lists_ + night + '/')
+def most_probable_image(archivo):
+    image_data = fits.getdata(archivo, ext=0)
+    v_median = np.median(image_data)
+    v_sd = stdrobust(image_data)
+    if v_sd < 50 and v_median < 900:
+        probable = 0  # Bias
+    elif v_sd < 500:
+        probable = 1  # Arc
+    else:
+        probable = 2  # Flat
 
-            path_ = dir_data_ + night + '/'
-            l_bias, l_flat, l_arc, l_ciencia, l_archivos, l_falla = file_list_2(path_,
-                                                                                desc_bias,
-                                                                                desc_flats,
-                                                                                desc_arc,
-                                                                                verbose,
-                                                                                calysci)
+    return probable
 
-            mostrarresultados(['Bias', 'Flat', 'Arc', 'Ciencia', 'Falla'],
-                              [len(l_bias), len(l_flat), len(l_arc), len(l_ciencia), len(l_falla)],
-                              titulo=night, contador=i, valor_max=len(lista_nights_))
 
-            # save_file_csv(dir_lista_ + night + '/' + 'CAL.csv', cal)
-            save_file_csv(dir_lists_ + night + '/' + 'SCI.csv', l_ciencia)
-            save_file_csv(dir_lists_ + night + '/' + 'ARC.csv', l_archivos)
-            save_file_csv(dir_lists_ + night + '/' + 'LBias.csv', l_bias)
-            save_file_csv(dir_lists_ + night + '/' + 'LFlat.csv', l_flat)
-            save_file_csv(dir_lists_ + night + '/' + 'LArc.csv', l_arc)
-            save_file_csv(dir_lists_ + night + '/' + 'Errores.csv', l_falla)
+def obtain_files_lists(path_):
+    file_list = []
+    for file in os.listdir(path_):
+        if file.endswith(".fits"):
+            file_list.append(os.path.join(path_, file))
+    return file_list
+
+
+def read_list(archivo):
+    with open(archivo, 'rt') as f:
+        reader = csv.reader(f, delimiter=',')
+        your_list = list(reader)
+    your_list = [item for sublist in your_list for item in sublist]
+    return your_list

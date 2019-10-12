@@ -1,43 +1,9 @@
-import numpy as np
-from .Salida_limpia import mostrarresultados, stdrobust
-import matplotlib.pyplot as plt
-from astropy.io import fits
 import argparse
+from astropy.io import fits
+import matplotlib.pyplot as plt
+import numpy as np
 
-
-def deshacer_tupla(tupla):
-    if len(tupla) == 2:
-        return tupla[0], tupla[1]
-    if len(tupla) == 4:
-        return tupla[0], tupla[1], tupla[2], tupla[3]
-
-
-def sacar_coordenadas_ccd(imagen_, mypath_=None):
-    if mypath_:
-        strccdsec = fits.open(mypath_ + imagen_)[0].header['CCDSEC']
-        longitud = len(strccdsec)
-    else:
-        strccdsec = imagen_
-        longitud = len(strccdsec)+1
-    for x in range(1, longitud):
-        if strccdsec[x] == ',':
-            coma = x
-            break
-    for x in range(coma + 1, longitud):
-        if strccdsec[x] == ':':
-            puntos = x
-            break
-    for x in range(puntos + 1, longitud):
-        if strccdsec[x] == ',':
-            coma2 = x
-            break
-
-    x1 = int(strccdsec[1:coma])
-    y1 = int(strccdsec[coma + 1: puntos])
-    x2 = int(strccdsec[puntos + 1: coma2])
-    y2 = int(strccdsec[coma2 + 1: -1])
-    coordenadas_ccd = (x1, x2, y1, y2)
-    return coordenadas_ccd
+from .Salida_limpia import mostrarresultados, stdrobust
 
 
 def coordenadas(x1, x2, y1, y2, args=None, hdr=None):
@@ -55,17 +21,15 @@ def coordenadas(x1, x2, y1, y2, args=None, hdr=None):
             y2 = y2 - c_coordendas[3]
     coordenadas_dibujo = (x1, x2, y1, y2)
     min_max_coorden = limites_imagen(*coordenadas_dibujo)
-        
+
     return coordenadas_dibujo, min_max_coorden
 
 
-def limites_imagen(x1, x2, y1, y2):
-    xmin = float(x1) - 0.5
-    xmax = float(x2) + 0.5
-    ymin = float(y1) - 0.5
-    ymax = float(y2) + 0.5
-    tupla_salida = (xmin, xmax, ymin, ymax)
-    return tupla_salida
+def deshacer_tupla(tupla):
+    if len(tupla) == 2:
+        return tupla[0], tupla[1]
+    if len(tupla) == 4:
+        return tupla[0], tupla[1], tupla[2], tupla[3]
 
 
 def escala(image2d, modo='cuantil'):
@@ -82,7 +46,6 @@ def imgdibujar(image2d, x1=None, x2=None, y1=None, y2=None,
                xmin=None, xmax=None, ymin=None, ymax=None,
                cmap='hot',
                background=None, foreground=None, verbose_=0):
-
     if not x1 and not x2 and not y1 and not y2 and not xmin and not xmax and not ymin and not ymax:
         x1 = 1
         y1 = 1
@@ -107,7 +70,7 @@ def imgdibujar(image2d, x1=None, x2=None, y1=None, y2=None,
                            xmin, xmax, ymin, ymax, -1,
                            background, foreground, -1,
                            np.median(image2d), np.mean(image2d), stdrobust(image2d, 2),
-                           round((xmax-xmin)/(ymax-ymin), 2)],
+                           round((xmax - xmin) / (ymax - ymin), 2)],
                           titulo='Parametros Imagen')
 
     # Se puede ir ampliando a medida que tenga mas funciones
@@ -119,6 +82,43 @@ def imgdibujar(image2d, x1=None, x2=None, y1=None, y2=None,
                extent=[xmin, xmax, ymin, ymax])
     plt.colorbar()
     plt.show()
+
+
+def limites_imagen(x1, x2, y1, y2):
+    xmin = float(x1) - 0.5
+    xmax = float(x2) + 0.5
+    ymin = float(y1) - 0.5
+    ymax = float(y2) + 0.5
+    tupla_salida = (xmin, xmax, ymin, ymax)
+    return tupla_salida
+
+
+def sacar_coordenadas_ccd(imagen_, mypath_=None):
+    if mypath_:
+        strccdsec = fits.open(mypath_ + imagen_)[0].header['CCDSEC']
+        longitud = len(strccdsec)
+    else:
+        strccdsec = imagen_
+        longitud = len(strccdsec) + 1
+    for x in range(1, longitud):
+        if strccdsec[x] == ',':
+            coma = x
+            break
+    for x in range(coma + 1, longitud):
+        if strccdsec[x] == ':':
+            puntos = x
+            break
+    for x in range(puntos + 1, longitud):
+        if strccdsec[x] == ',':
+            coma2 = x
+            break
+
+    x1 = int(strccdsec[1:coma])
+    y1 = int(strccdsec[coma + 1: puntos])
+    x2 = int(strccdsec[puntos + 1: coma2])
+    y2 = int(strccdsec[coma2 + 1: -1])
+    coordenadas_ccd = (x1, x2, y1, y2)
+    return coordenadas_ccd
 
 
 def main():
@@ -171,5 +171,4 @@ def main():
 
 
 if __name__ == "__main__":
-
     main()

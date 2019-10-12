@@ -1,17 +1,4 @@
 import csv
-import os
-import pandas as pd
-
-
-def tuple2coordinates(tupla):
-    return tupla[0], tupla[1], tupla[2], tupla[3]
-
-
-def save_file_csv(csvfile, res):
-    with open(csvfile, "w") as output:
-        writer = csv.writer(output, lineterminator='\n')
-        for val in res:
-            writer.writerow([val])
 
 
 def add_to_file(file, what):
@@ -37,6 +24,13 @@ def obtain_naxis(coordenadas_tupla, binn_1, binn_2=None):
     return naxis1, naxis2
 
 
+def save_file_csv(csvfile, res):
+    with open(csvfile, "w") as output:
+        writer = csv.writer(output, lineterminator='\n')
+        for val in res:
+            writer.writerow([val])
+
+
 def slicing_data(slicing_push, size_da, size_mb):
     if slicing_push == "NW":
         s1 = size_da[0] - size_mb[0]
@@ -59,3 +53,7 @@ def slicing_data(slicing_push, size_da, size_mb):
         s3 = 0
         s4 = size_mb[1]
     return s1, s2, s3, s4
+
+
+def tuple2coordinates(tupla):
+    return tupla[0], tupla[1], tupla[2], tupla[3]

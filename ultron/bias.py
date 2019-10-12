@@ -1,83 +1,16 @@
 from astropy.io import fits
 from astropy.time import Time
+import datetime
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import datetime
 import warnings
 
-from .Salida_limpia import mostrarresultados
-from .IMGPlot import imgdibujar, limites_imagen
-from .coordinates import obtain_coordinates_2, obtain_coordinates_ccd
 from .auxiliary_functions import tuple2coordinates, obtain_naxis, slicing_data
+from .coordinates import obtain_coordinates_2, obtain_coordinates_ccd
 from .generate_lists import read_list, create_unique_list
-
-
-def obtain_bias(dir_bias_, night, list_nights, list_bias, x1, x2, y1, y2, b1, b2,
-                max_search=10, fill_bias=680, verbose=False):
-    """
-    Searches the list of available bias for a bias with the same night the photo was taken. Also checks size nd binning.
-    If it finds such a bias, it will use that one directly. If it does not find one, it will look for a different bias
-    which fits the desired parametres for other nights. If there aren't any, it generates a flat bias.
-
-    :param dir_bias_:
-    :param night:
-    :param list_nights:
-    :param list_bias:
-    :param x1:
-    :param x2:
-    :param y1:
-    :param y2:
-    :param b1:
-    :param b2:
-    :param max_search:
-    :param fill_bias:
-    :param verbose:
-    :return:
-    """
-
-    searched_bias_name = dir_bias_ + night +\
-        "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}.fits".format(x1, x2, y1, y2, b1, b2)
-    exist = None
-    take_another = False
-    if searched_bias_name in list_bias:
-        exist = True
-    else:
-        position = list_nights.index(night)
-        for i in range(1, max_search):
-            for mult in [-1, 1]:
-                indx = i * mult
-                position_new = position + indx
-                if position_new >= len(list_nights):
-                    # Reached end of the year. Doesn't search for next year. Can be fixed with a bigger folder and
-                    # placing every night in a same folder
-                    break
-                night = list_nights[position_new]
-                searched_bias_new = dir_bias_ + night + \
-                    "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}.fits"\
-                    .format(x1, x2, y1, y2, b1, b2)
-
-                if searched_bias_new in list_bias:
-                    searched_bias_name = searched_bias_new
-                    exist = True
-                    take_another = True
-
-    if exist:
-        if verbose:
-            if take_another:
-                print('Bias taken from another night. The taken bias is:')
-                print(searched_bias_name)
-            else:
-                print('Bias exists.')
-        searched_bias = fits.getdata(searched_bias_name, ext=0)
-    else:
-        if verbose:
-            print('There are no nearby bias available. A filled bias has been generated.')
-        naxis1_expected, naxis2_expected = obtain_naxis((x1, x2, y1, y2), b2, b1)
-
-        searched_bias = np.full((naxis1_expected, naxis2_expected), fill_bias, dtype=float)
-
-    return exist, searched_bias_name, searched_bias
+from .IMGPlot import imgdibujar, limites_imagen
+from .Salida_limpia import mostrarresultados
 
 
 def join_bias_images(night, unique_sections_, coordinates_sections_, sections_count_, indx_section_,
@@ -233,3 +166,70 @@ def make_master_bias(list_nights, dir_lists, dir_data, dir_bias, interactive, cu
             df_bias = pd.concat([df_bias, df_bias_], ignore_index=True)
 
     return df_bias
+
+
+def obtain_bias(dir_bias_, night, list_nights, list_bias, x1, x2, y1, y2, b1, b2,
+                max_search=10, fill_bias=680, verbose=False):
+    """
+    Searches the list of available bias for a bias with the same night the photo was taken. Also checks size nd binning.
+    If it finds such a bias, it will use that one directly. If it does not find one, it will look for a different bias
+    which fits the desired parametres for other nights. If there aren't any, it generates a flat bias.
+
+    :param dir_bias_:
+    :param night:
+    :param list_nights:
+    :param list_bias:
+    :param x1:
+    :param x2:
+    :param y1:
+    :param y2:
+    :param b1:
+    :param b2:
+    :param max_search:
+    :param fill_bias:
+    :param verbose:
+    :return:
+    """
+
+    searched_bias_name = dir_bias_ + night +\
+        "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}.fits".format(x1, x2, y1, y2, b1, b2)
+    exist = None
+    take_another = False
+    if searched_bias_name in list_bias:
+        exist = True
+    else:
+        position = list_nights.index(night)
+        for i in range(1, max_search):
+            for mult in [-1, 1]:
+                indx = i * mult
+                position_new = position + indx
+                if position_new >= len(list_nights):
+                    # Reached end of the year. Doesn't search for next year. Can be fixed with a bigger folder and
+                    # placing every night in a same folder
+                    break
+                night = list_nights[position_new]
+                searched_bias_new = dir_bias_ + night + \
+                    "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}.fits"\
+                    .format(x1, x2, y1, y2, b1, b2)
+
+                if searched_bias_new in list_bias:
+                    searched_bias_name = searched_bias_new
+                    exist = True
+                    take_another = True
+
+    if exist:
+        if verbose:
+            if take_another:
+                print('Bias taken from another night. The taken bias is:')
+                print(searched_bias_name)
+            else:
+                print('Bias exists.')
+        searched_bias = fits.getdata(searched_bias_name, ext=0)
+    else:
+        if verbose:
+            print('There are no nearby bias available. A filled bias has been generated.')
+        naxis1_expected, naxis2_expected = obtain_naxis((x1, x2, y1, y2), b2, b1)
+
+        searched_bias = np.full((naxis1_expected, naxis2_expected), fill_bias, dtype=float)
+
+    return exist, searched_bias_name, searched_bias

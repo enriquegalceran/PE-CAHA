@@ -1,98 +1,20 @@
 from astropy.io import fits
 from astropy.time import Time
-import numpy as np
-import pandas as pd
-import numpy.ma as ma
-import matplotlib.pyplot as plt
 import datetime
+import matplotlib.pyplot as plt
+import numpy as np
+import numpy.ma as ma
+import pandas as pd
 
-from .Salida_limpia import mostrarresultados
+from .auxiliary_functions import tuple2coordinates, obtain_naxis
+from .bias import obtain_bias
+from .coordinates import obtain_coordinates_2, obtain_coordinates_ccd
+from .dictionary import read_dictionary
+from .generate_lists import read_list, create_unique_list
 from .IMGPlot import imgdibujar, limites_imagen
 from .json_functions import load_json
-from .dictionary import read_dictionary
-from .coordinates import obtain_coordinates_2, obtain_coordinates_ccd
-from .auxiliary_functions import tuple2coordinates, obtain_naxis
-from .generate_lists import read_list, create_unique_list
-from .bias import obtain_bias
 from .mask_generation import create_circular_mask
-
-
-def obtain_flats(dir_flats_, night_, list_nights, list_flats, x1, x2, y1, y2, b1, b2, id_filter_, max_search=10,
-                 fill_flat=1, verbose=False):
-    """
-    Similarly to obtain_bias, searches the list of available flats for a flat with the same night the photo was taken.
-    Also checks size nd binning. If it finds such a bias, it will use that one directly. If it does not find one, it
-    will look for a different bias which fits the desired parameters for other nights. If there aren't any, it generates
-    a flat bias.
-
-    :param dir_flats_:
-    :param night_:
-    :param list_nights:
-    :param list_flats:
-    :param x1:
-    :param x2:
-    :param y1:
-    :param y2:
-    :param b1:
-    :param b2:
-    :param id_filter_:
-    :param max_search:
-    :param fill_flat:
-    :param verbose:
-    :return:
-    """
-
-    searched_flat_name = dir_flats_ + night_ + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}-F{6:03d}.fits" \
-        .format(x1, x2, y1, y2, b1, b2, id_filter_)
-    exist = False
-    take_another = False
-
-    if searched_flat_name in list_flats:
-        exist = True
-    else:
-        position = list_nights.index(night_)
-        for i in range(1, max_search):
-            if exist:
-                break
-            for mult in [-1, 1]:
-                indx = i * mult
-                position_new = position + indx
-                if position_new >= len(list_nights):
-                    # Reached end of the year. Doesn't search for next year. Can be fixed with a bigger folder and
-                    # placing every night in a same folder
-                    break
-                night_ = list_nights[position_new]
-                searched_flat_new = dir_flats_ + night_ + \
-                    "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}-F{6:03d}.fits" \
-                    .format(x1, x2, y1, y2, b1, b2, id_filter_)
-
-                if searched_flat_new in list_flats:
-                    searched_flat_name = searched_flat_new
-                    exist = True
-                    take_another = True
-                    break
-
-    if exist:
-        if verbose:
-            if take_another:
-                print('Flat taken from another night. The taken flat is:')
-                print(searched_flat_name)
-            else:
-                print('Flat exists.')
-        searched_flat = fits.getdata(searched_flat_name, ext=0)
-    else:
-        if verbose:
-            print('There are no nearby flats available. A filled bias has been generated.')
-
-        # searched_flat = None
-        # if searched_flat is None:
-        #     raise ValueError('No hay definido un valor por defecto para el flat')
-
-        naxis1_expected, naxis2_expected = obtain_naxis((x1, x2, y1, y2), b2, b1)
-
-        searched_flat = np.full((naxis1_expected, naxis2_expected), fill_flat, dtype=float)
-
-    return exist, searched_flat_name, searched_flat
+from .Salida_limpia import mostrarresultados
 
 
 def join_flat_images(nights, unique_sections_, sections_coordinates_, indx_section_,
@@ -227,7 +149,7 @@ def join_flat_images(nights, unique_sections_, sections_coordinates_, indx_secti
                         image_data = fits.getdata(image_file, ext=0)
 
                         if image_data[:, :].shape == master_flats[index0, :, :].shape:
-                            master_flats[index0, :, :] = image_data[:, :]                  # Juntar
+                            master_flats[index0, :, :] = image_data[:, :]  # Juntar
                         else:
                             print('There is a problem with the image size')
                             input('Pause. Press Enter to to continue...')
@@ -276,8 +198,8 @@ def join_flat_images(nights, unique_sections_, sections_coordinates_, indx_secti
                         plt.show()
 
                     # Generate the name of the future flat
-                    flat_file_name = nights +\
-                        "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}-F{6:03d}.fits"\
+                    flat_file_name = nights + \
+                        "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}-F{6:03d}.fits" \
                         .format(x1, x2, y1, y2, ccdbinx, ccdbiny, int(name_dictionary[filtro]))
 
                     masterflats_header = header_.copy()
@@ -349,9 +271,9 @@ def join_flat_images(nights, unique_sections_, sections_coordinates_, indx_secti
 
     return element_list
 
+
 def make_master_flat(list_nights, list_bias, dir_lists, dir_data, dir_bias, dir_flats,
                      verbose, interactive, verbose_imagen=False):
-
     """
     Main function to make master flats.
 
@@ -394,3 +316,81 @@ def make_master_flat(list_nights, list_bias, dir_lists, dir_data, dir_bias, dir_
             df_flat = pd.concat([df_flat, df_flat_], ignore_index=True)
 
     return df_flat
+
+
+def obtain_flats(dir_flats_, night_, list_nights, list_flats, x1, x2, y1, y2, b1, b2, id_filter_, max_search=10,
+                 fill_flat=1, verbose=False):
+    """
+    Similarly to obtain_bias, searches the list of available flats for a flat with the same night the photo was taken.
+    Also checks size nd binning. If it finds such a bias, it will use that one directly. If it does not find one, it
+    will look for a different bias which fits the desired parameters for other nights. If there aren't any, it generates
+    a flat bias.
+
+    :param dir_flats_:
+    :param night_:
+    :param list_nights:
+    :param list_flats:
+    :param x1:
+    :param x2:
+    :param y1:
+    :param y2:
+    :param b1:
+    :param b2:
+    :param id_filter_:
+    :param max_search:
+    :param fill_flat:
+    :param verbose:
+    :return:
+    """
+
+    searched_flat_name = dir_flats_ + night_ + "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}-F{6:03d}.fits" \
+        .format(x1, x2, y1, y2, b1, b2, id_filter_)
+    exist = False
+    take_another = False
+
+    if searched_flat_name in list_flats:
+        exist = True
+    else:
+        position = list_nights.index(night_)
+        for i in range(1, max_search):
+            if exist:
+                break
+            for mult in [-1, 1]:
+                indx = i * mult
+                position_new = position + indx
+                if position_new >= len(list_nights):
+                    # Reached end of the year. Doesn't search for next year. Can be fixed with a bigger folder and
+                    # placing every night in a same folder
+                    break
+                night_ = list_nights[position_new]
+                searched_flat_new = dir_flats_ + night_ + \
+                    "-{0:04d}_{1:04d}_{2:04d}_{3:04d}-B{4:02d}_{5:02d}-F{6:03d}.fits" \
+                    .format(x1, x2, y1, y2, b1, b2, id_filter_)
+
+                if searched_flat_new in list_flats:
+                    searched_flat_name = searched_flat_new
+                    exist = True
+                    take_another = True
+                    break
+
+    if exist:
+        if verbose:
+            if take_another:
+                print('Flat taken from another night. The taken flat is:')
+                print(searched_flat_name)
+            else:
+                print('Flat exists.')
+        searched_flat = fits.getdata(searched_flat_name, ext=0)
+    else:
+        if verbose:
+            print('There are no nearby flats available. A filled bias has been generated.')
+
+        # searched_flat = None
+        # if searched_flat is None:
+        #     raise ValueError('No hay definido un valor por defecto para el flat')
+
+        naxis1_expected, naxis2_expected = obtain_naxis((x1, x2, y1, y2), b2, b1)
+
+        searched_flat = np.full((naxis1_expected, naxis2_expected), fill_flat, dtype=float)
+
+    return exist, searched_flat_name, searched_flat
